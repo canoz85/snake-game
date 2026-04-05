@@ -59,7 +59,7 @@ void MenuOverlay::showStartMenu()
     setMenu(
         "SNAKE GAME // ʙᴀᴛᴜ & ᴄᴀɴ",
         "arrows to navigate • enter to select",
-        {"Start", "Exit"}
+        {"Start", "Scoreboard", "Exit"}
     );
     setVisible(true);
 }
@@ -117,6 +117,8 @@ MenuOverlay::Action MenuOverlay::activateSelection() const
         return Action::Restart;
     if (current == "Back to Menu")
         return Action::BackToMenu;
+    if (current == "Scoreboard")
+        return Action::Scoreboard;
     if (current == "Exit")
         return Action::Exit;
 

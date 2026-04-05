@@ -14,6 +14,7 @@ public:
         Start,
         Restart,
         BackToMenu,
+        Scoreboard,
         Exit
     };
 

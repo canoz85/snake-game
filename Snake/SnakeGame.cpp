@@ -5,6 +5,7 @@
 #include <QPen>
 #include <QColor>
 #include <QFont>
+#include <QCoreApplication>
 
 // ---------------------------------------------------------------------------
 // Construction
@@ -14,8 +15,14 @@ SnakeGame::SnakeGame(QWidget *parent)
     : QGraphicsView(parent)
 {
     setupScene();
-    const qreal W = GameLogic::Columns * CellSize;
-    const qreal BoardH = GameLogic::Rows * CellSize;
+    const qreal W      = GameLogic::Columns * CellSize;
+    const qreal BoardH = GameLogic::Rows    * CellSize;
+
+    m_db.open(QCoreApplication::applicationDirPath() + "/snake_scores.db");
+
+    m_nameInput  = std::make_unique<NameInputOverlay>(scene(), W, BoardH);
+    m_scoreboard = std::make_unique<ScoreboardOverlay>(scene(), W, BoardH);
+
     m_menu = std::make_unique<MenuOverlay>(scene(), W, BoardH);
     m_menu->showStartMenu();
     connect(&m_timer, &QTimer::timeout, this, &SnakeGame::onTick);
@@ -56,7 +63,13 @@ void SnakeGame::setupScene()
 
 void SnakeGame::setMenuVisible(bool visible)
 {
-    m_inMenu = visible;
+    m_inMenu              = visible;
+    m_inNameInput         = false;
+    m_inScoreboard        = false;
+    m_scoreboardFromStart = false;
+
+    if (m_nameInput)  m_nameInput->setVisible(false);
+    if (m_scoreboard) m_scoreboard->setVisible(false);
 
     if (m_menu)
         m_menu->setVisible(visible);
@@ -145,7 +158,7 @@ void SnakeGame::newGame()
 
 void SnakeGame::onTick()
 {
-    if (m_inMenu)
+    if (m_inMenu || m_inNameInput || m_inScoreboard)
         return;
 
     m_logic.step();
@@ -153,9 +166,7 @@ void SnakeGame::onTick()
 
     if (m_logic.isGameOver()) {
         m_timer.stop();
-        if (m_menu)
-            m_menu->showGameOverMenu(m_logic.score());
-        setMenuVisible(true);
+        handleGameOver();
     }
 }
 
@@ -276,6 +287,32 @@ QRectF SnakeGame::eyeRect(QPointF dir) const
 
 void SnakeGame::keyPressEvent(QKeyEvent *event)
 {
+    // Priority 1: in-scene name input is active
+    if (m_inNameInput) {
+        m_nameInput->handleKey(event);
+        if (m_nameInput->isConfirmed())
+            onNameInputDone();
+        return;
+    }
+
+    // Priority 2: scoreboard is visible
+    if (m_inScoreboard) {
+        m_scoreboard->handleKey(event);
+        if (m_scoreboard->poll() == ScoreboardOverlay::Action::Continue) {
+            m_inScoreboard = false;
+            if (m_scoreboardFromStart) {
+                m_scoreboardFromStart = false;
+                m_menu->showStartMenu();
+                setMenuVisible(true);
+            } else {
+                m_menu->showGameOverMenu(m_logic.score());
+                setMenuVisible(true);
+            }
+        }
+        return;
+    }
+
+    // Priority 3: main menu navigation
     if (m_inMenu) {
         if (!m_menu) {
             QGraphicsView::keyPressEvent(event);
@@ -299,6 +336,12 @@ void SnakeGame::keyPressEvent(QKeyEvent *event)
             } else if (action == MenuOverlay::Action::BackToMenu) {
                 m_menu->showStartMenu();
                 setMenuVisible(true);
+            } else if (action == MenuOverlay::Action::Scoreboard) {
+                m_inMenu = false;
+                m_menu->setVisible(false);
+                m_inScoreboard        = true;
+                m_scoreboardFromStart = true;
+                m_scoreboard->show(m_db.getTopScores());
             } else if (action == MenuOverlay::Action::Exit) {
                 qApp->quit();
             }
@@ -323,5 +366,35 @@ void SnakeGame::keyPressEvent(QKeyEvent *event)
     default:
         QGraphicsView::keyPressEvent(event);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Scoreboard / name-input helpers
+// ---------------------------------------------------------------------------
+
+void SnakeGame::handleGameOver()
+{
+    const int currentScore = m_logic.score();
+    if (currentScore > m_db.getHighScore()) {
+        m_nameInput->show(currentScore);
+        m_inNameInput = true;
+    } else {
+        m_scoreboard->show(m_db.getTopScores());
+        m_inScoreboard        = true;
+        m_scoreboardFromStart = false;
+    }
+}
+
+void SnakeGame::onNameInputDone()
+{
+    m_inNameInput = false;
+
+    const QString name = m_nameInput->typedName().trimmed();
+    if (!name.isEmpty())
+        m_db.save(name, m_logic.score());
+
+    m_scoreboard->show(m_db.getTopScores());
+    m_inScoreboard        = true;
+    m_scoreboardFromStart = false;
 }
 
