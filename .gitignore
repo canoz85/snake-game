@@ -1,0 +1,40 @@
+# Build directories
+/build-*/
+/out/
+/bin/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+build.ninja
+.cmake/
+
+# Qt autogen output
+*_autogen/
+*.autogen/
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+
+# Compiled objects and binaries
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+
+# Qt Creator / CMake user-local files
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.user
+*.autosave
+
+# VS Code workspace-local settings
+.vscode/

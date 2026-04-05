@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SnakeGame</class>
+ <widget class="QMainWindow" name="SnakeGame">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Snake</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="1">
+    <item>
+     <!-- This is the view where the game is drawn -->
+     <widget class="QGraphicsView" name="snakeView">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <!-- Optional: set a background color -->
+      <property name="backgroundBrush">
+       <brush style="SolidPattern">
+        <color name="black"/>
+       </brush>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <!-- Menubar, statusbar are optional – they’re left empty here -->
+  <addaction name="actionExit"/>
+  <addaction name="actionAbout"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
