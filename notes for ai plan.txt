@@ -1,0 +1,45 @@
+senin için Basitten Zora: Snake AI Yol Haritası hazırladım.
+
+1. Adım: "Kural Tabanlı" Zeka (Isınma)
+Hemen AI bağlamadan önce, yılanın kendi kendine karar vermesini sağlayan bir yapı kurmalısın. Bu, ileride AI'yı entegre edeceğin "beyin" kısmının yuvası olacak.
+
+Görev: Snake::move() fonksiyonunu manuel (tuş takımı) yerine bir decideDirection() fonksiyonuna bağla.
+
+Mantık: Elma yukarıdaysa yukarı git, sağdaysa sağa git (basit if-else).
+
+Kazanım: Yılanın kontrolünü bir "karar mekanizmasına" devretmeyi öğrenirsin.
+
+2. Adım: Yerel LLM Entegrasyonu (Ollama + Qt)
+Bilgisayarındaki yerel gücü kullanma vakti!
+
+Araç: Bilgisayarına Ollama kur ve terminalden ollama run llama3 (veya phi3) komutuyla hazırla.
+
+Kod: Qt içindeki QNetworkAccessManager sınıfını kullanarak Ollama'nın yerel API'sine (localhost:11434) bir HTTP POST isteği at.
+
+Senaryo: Yılanın etrafı kapandığında oyunu duraklat, durumu AI'ya metin olarak gönder: "Sağda kuyruğum, solda duvar var, elma karşıda. Ne yapayım?" Gelen cevaba göre yılanı hareket ettir.
+
+Kazanım: C++ ile bir API/AI servisine bağlanmayı ve JSON veri işlemeyi öğrenirsin.
+
+3. Adım: Heuristic & A* Algoritması (Gerçek Matematik)
+LLM çok yavaş kalırsa, yılanın "en kısa yolu" matematiksel olarak bulmasını sağla.
+
+Görev: A (A-Star)* algoritmasını C++ ile yaz.
+
+Mantık: Izgarayı bir harita gibi düşün. Elmaya giden en güvenli ve kısa yolu her karede hesapla.
+
+Kazanım: Algoritma yeteneğin tavan yapar. Birçok oyun şirketinin mülakat sorusudur.
+
+4. Adım: Reinforcement Learning - DQN (Zirve Noktası)
+İşte en heyecan verici ve en zor kısım. Burada yılan "ne yapacağını" bilmez, deneye yanıla öğrenir.
+
+Araç: LibTorch (PyTorch'un C++ versiyonu) veya basit bir sinir ağı kütüphanesi.
+
+Mantık:
+
+Yılan rastgele hareket eder.
+
+Ölürse "ceza" alır, elma yerse "ödül" alır.
+
+Binlerce denemeden sonra sinir ağı, hangi durumda hangi hamlenin en yüksek ödülü (elmayı) getireceğini anlar.
+
+Kazanım: Gerçek anlamda bir Yapay Zeka eğitmiş olursun.

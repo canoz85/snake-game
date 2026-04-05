@@ -1,4 +1,6 @@
+
 #include "SnakeGame.h"
+#include "SnakeGame_config.h"
 
 #include <QBrush>
 #include <QPen>
@@ -34,21 +36,21 @@ void SnakeGame::newGame()
     m_headItem = scene()->addPolygon(
         headPolygon(m_logic.currentDir()),
         QPen(Qt::NoPen),
-        QBrush(QColor(0, 230, 0))
+        QBrush(SnakeGameConfig::SnakeHeadColor)
     );
     m_headItem->setZValue(1);
 
     m_headEyeItem = scene()->addEllipse(
         eyeRect(m_logic.currentDir()),
         QPen(Qt::NoPen),
-        QBrush(QColor(20, 20, 20))
+        QBrush(SnakeGameConfig::SnakeEyeColor)
     );
     m_headEyeItem->setZValue(2);
 
     m_appleItem = scene()->addRect(
         0, 0, CellSize, CellSize,
         QPen(Qt::NoPen),
-        QBrush(QColor(255, 50, 50))
+        QBrush(SnakeGameConfig::AppleColor)
     );
 
     ensureSnakeItems(m_logic.snakeBody().size() - 1);

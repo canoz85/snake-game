@@ -1,3 +1,4 @@
+#include "SnakeGame_config.h"
 #include "SnakeGame.h"
 
 #include <QBrush>
@@ -17,7 +18,7 @@ void SnakeGame::setupScene()
     setFixedSize(W, H);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    setBackgroundBrush(QColor(30, 30, 30));
+    setBackgroundBrush(SnakeGameConfig::SceneBackgroundColor);
 
     m_scoreBarItem = sc->addRect(
         0, BoardH, W, ScoreBarHeight,
@@ -27,11 +28,11 @@ void SnakeGame::setupScene()
     m_scoreBarItem->setZValue(3);
 
     m_scoreTextItem = sc->addText(QString(), QFont("Consolas", 11, QFont::Bold));
-    m_scoreTextItem->setDefaultTextColor(QColor(170, 220, 170));
+    m_scoreTextItem->setDefaultTextColor(SnakeGameConfig::ScoreTextColor);
     m_scoreTextItem->setZValue(4);
 
     m_bestScoreTextItem = sc->addText(QString(), QFont("Consolas", 10, QFont::Bold));
-    m_bestScoreTextItem->setDefaultTextColor(QColor(150, 200, 150));
+    m_bestScoreTextItem->setDefaultTextColor(SnakeGameConfig::BestScoreTextColor);
     m_bestScoreTextItem->setZValue(4);
 }
 
@@ -102,12 +103,16 @@ void SnakeGame::syncGraphics()
 
 void SnakeGame::ensureSnakeItems(int n)
 {
+    QPen borderPen(QColor("#2C3E50"));
+    borderPen.setWidth(2);
+    QBrush snakeBrush(SnakeGameConfig::SnakeColor);
+    
     while (m_snakeItems.size() < n) {
         m_snakeItems.append(
             scene()->addRect(
                 0, 0, CellSize, CellSize,
-                QPen(Qt::NoPen),
-                QBrush(QColor(0, 200, 0))
+                borderPen,
+                snakeBrush
             )
         );
     }

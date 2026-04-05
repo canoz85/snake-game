@@ -19,6 +19,8 @@ qt_add_executable(Snake
     ui/menu/MenuOverlay.cpp
     app/SnakeGame.h
     app/SnakeGame.cpp
+    app/SnakeGame_config.h
+    app/SnakeGame_config.cpp
     app/SnakeGame_scene.cpp
     app/SnakeGame_input.cpp
     app/SnakeGame_flow.cpp
