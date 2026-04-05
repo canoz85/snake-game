@@ -91,6 +91,8 @@ void SnakeGame::onNameInputDone()
     if (!name.isEmpty())
         m_db.save(name, m_logic.score());
 
+    updateScoreDisplay();
+
     m_scoreboard->show(m_db.getTopScores());
     setUiState(UiState::Scoreboard);
     m_scoreboardFromStart = false;

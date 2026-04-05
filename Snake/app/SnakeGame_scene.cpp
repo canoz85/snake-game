@@ -29,6 +29,10 @@ void SnakeGame::setupScene()
     m_scoreTextItem = sc->addText(QString(), QFont("Consolas", 11, QFont::Bold));
     m_scoreTextItem->setDefaultTextColor(QColor(170, 220, 170));
     m_scoreTextItem->setZValue(4);
+
+    m_bestScoreTextItem = sc->addText(QString(), QFont("Consolas", 10, QFont::Bold));
+    m_bestScoreTextItem->setDefaultTextColor(QColor(150, 200, 150));
+    m_bestScoreTextItem->setZValue(4);
 }
 
 void SnakeGame::setUiState(UiState state)
@@ -111,15 +115,30 @@ void SnakeGame::ensureSnakeItems(int n)
 
 void SnakeGame::updateScoreDisplay()
 {
-    if (!m_scoreTextItem)
+    if (!m_scoreTextItem || !m_bestScoreTextItem)
         return;
 
+    const int boardWidth = GameLogic::Columns * CellSize;
     const QString scoreLabel = QString("Score: %1").arg(m_logic.score());
     const int boardHeight = GameLogic::Rows * CellSize;
 
     m_scoreTextItem->setPlainText(scoreLabel);
     const QRectF textBounds = m_scoreTextItem->boundingRect();
     m_scoreTextItem->setPos(12, boardHeight + (ScoreBarHeight - textBounds.height()) / 2.0);
+
+    QString bestLabel = QString("Best: ---");
+    const QVector<ScoreEntry> topScores = m_db.getTopScores(1);
+    if (!topScores.isEmpty()) {
+        const ScoreEntry &best = topScores.first();
+        bestLabel = QString("Best: %1 (%2)").arg(best.name, QString::number(best.score));
+    }
+
+    m_bestScoreTextItem->setPlainText(bestLabel);
+    const QRectF bestBounds = m_bestScoreTextItem->boundingRect();
+    m_bestScoreTextItem->setPos(
+        boardWidth - 12 - bestBounds.width(),
+        boardHeight + (ScoreBarHeight - bestBounds.height()) / 2.0
+    );
 }
 
 QPolygonF SnakeGame::headPolygon(QPointF dir) const

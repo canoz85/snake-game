@@ -78,4 +78,5 @@ private:
     QGraphicsRectItem*          m_appleItem   = nullptr;
     QGraphicsRectItem*          m_scoreBarItem = nullptr;
     QGraphicsTextItem*          m_scoreTextItem = nullptr;
+    QGraphicsTextItem*          m_bestScoreTextItem = nullptr;
 };
