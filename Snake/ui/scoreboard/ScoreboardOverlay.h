@@ -5,7 +5,7 @@
 #include <QGraphicsTextItem>
 #include <QKeyEvent>
 #include <QVector>
-#include "ScoreDB.h"
+#include "data/ScoreDB.h"
 
 // In-scene overlay that displays the top-5 leaderboard.
 // Shown automatically after every game and accessible from the start menu.

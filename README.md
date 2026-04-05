@@ -23,14 +23,24 @@ A classic Snake game built with **Qt6 + C++** and **CMake**.
 
 ```
 Snake/
-├── main.cpp               # Entry point
-├── GameLogic.h/cpp        # Pure game state & rules (no Qt graphics)
-├── SnakeGame.h/cpp        # QGraphicsView, rendering, input handling
-├── MenuOverlay.h/cpp      # In-scene start / game-over menu
-├── NameInputOverlay.h/cpp # In-scene name-input prompt (new high score)
-├── ScoreboardOverlay.h/cpp# Top-5 leaderboard display
-├── ScoreDB.h/cpp          # SQLite persistence layer (Qt6::Sql / QSQLITE)
-└── SnakeGame.ui           # Qt Designer UI file
+├── app/
+│   ├── main.cpp                     # Entry point
+│   ├── SnakeGame.h                  # View class declaration
+│   ├── SnakeGame.cpp                # Constructor/bootstrap wiring
+│   ├── SnakeGame_scene.cpp          # Scene setup + rendering helpers
+│   ├── SnakeGame_input.cpp          # Input/menu routing
+│   ├── SnakeGame_flow.cpp           # Tick loop + game-over flow
+│   └── SnakeGame.ui                 # Qt Designer UI file
+├── core/
+│   └── GameLogic.h/cpp              # Pure game state & rules (no Qt graphics)
+├── data/
+│   └── ScoreDB.h/cpp                # SQLite persistence layer (Qt6::Sql / QSQLITE)
+└── ui/
+    ├── menu/
+    │   └── MenuOverlay.h/cpp        # In-scene start / game-over menu
+    └── scoreboard/
+        ├── NameInputOverlay.h/cpp   # In-scene name-input prompt (new high score)
+        └── ScoreboardOverlay.h/cpp  # Top-5 leaderboard display
 ```
 
 ## Building

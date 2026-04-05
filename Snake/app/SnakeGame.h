@@ -10,11 +10,11 @@
 #include <QKeyEvent>
 #include <QVector>
 #include <memory>
-#include "GameLogic.h"
-#include "MenuOverlay.h"
-#include "ScoreDB.h"
-#include "NameInputOverlay.h"
-#include "ScoreboardOverlay.h"
+#include "core/GameLogic.h"
+#include "ui/menu/MenuOverlay.h"
+#include "data/ScoreDB.h"
+#include "ui/scoreboard/NameInputOverlay.h"
+#include "ui/scoreboard/ScoreboardOverlay.h"
 
 // SnakeGame is the view/input layer only.
 // All game state and rules live in GameLogic.
@@ -34,18 +34,30 @@ private slots:
     void onTick(); // called by QTimer each game tick
 
 private:
+    enum class UiState {
+        Menu,
+        Playing,
+        NameInput,
+        Scoreboard,
+    };
+
     // Rendering constants (pixel-level, view concerns only)
     static constexpr int CellSize   = 20;  // px per grid cell
     static constexpr int TimerDelay = 150; // ms
     static constexpr int ScoreBarHeight = 28;
 
     void setupScene();
+    void setUiState(UiState state);
     void syncGraphics();           // map GameLogic state → QGraphicsItems
     void ensureSnakeItems(int n);  // grow body-item pool to n items
     void setMenuVisible(bool visible);
     void updateScoreDisplay();
     void handleGameOver();         // decide whether to show name input or scoreboard
     void onNameInputDone();        // called after player confirms/skips name entry
+    void handleMenuInput(QKeyEvent *event);
+    void handleNameInput(QKeyEvent *event);
+    void handleScoreboardInput(QKeyEvent *event);
+    void handleGameplayInput(QKeyEvent *event);
 
     // Head shape helpers — return geometry in local cell coords (origin = top-left)
     QPolygonF headPolygon(QPointF dir) const;
@@ -53,9 +65,7 @@ private:
 
     GameLogic  m_logic;
     QTimer     m_timer;
-    bool       m_inMenu             = true;
-    bool       m_inNameInput        = false;
-    bool       m_inScoreboard       = false;
+    UiState    m_uiState            = UiState::Menu;
     bool       m_scoreboardFromStart = false;
     ScoreDB    m_db;
     std::unique_ptr<MenuOverlay>        m_menu;
