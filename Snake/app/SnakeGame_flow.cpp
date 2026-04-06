@@ -65,7 +65,7 @@ void SnakeGame::onTick()
     if (m_uiState != UiState::Playing)
         return;
 
-    m_logic.step();
+    m_logic.stepAI();
     syncGraphics();
 
     if (m_logic.isGameOver()) {

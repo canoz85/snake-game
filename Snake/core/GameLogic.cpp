@@ -106,3 +106,69 @@ void GameLogic::placeApple()
 
     m_apple = freeCells.at(QRandomGenerator::global()->bounded(freeCells.size()));
 }
+
+QPointF GameLogic::directionToVector(Direction dir)
+{
+    switch (dir) {
+    case Direction::Up:
+        return QPointF(0, -1);
+    case Direction::Down:
+        return QPointF(0, 1);
+    case Direction::Left:
+        return QPointF(-1, 0);
+    case Direction::Right:
+        return QPointF(1, 0);
+    }
+    return QPointF(0, 0); // should never reach here
+}
+
+GameLogic::Direction GameLogic::decideDirection(QPointF head, QPointF apple)
+{
+    Direction nextDir = Direction::Up; // default value to silence compiler warning, will be overwritten by logic below
+
+    if (apple.x() < head.x())
+       nextDir = Direction::Left;
+   else if (apple.x() > head.x())
+       nextDir = Direction::Right;
+   else if (apple.y() < head.y())
+       nextDir = Direction::Up;
+   else
+       nextDir = Direction::Down;
+
+    if (m_snake.contains(head + directionToVector(nextDir))){
+        if (nextDir == Direction::Up || nextDir == Direction::Down){
+            if (!m_snake.contains(head + directionToVector(Direction::Left)))
+                nextDir = Direction::Left;
+            else if (!m_snake.contains(head + directionToVector(Direction::Right)))
+                nextDir = Direction::Right;
+        }
+        else {
+            if (!m_snake.contains(head + directionToVector(Direction::Up))
+                    && nextDir != Direction::Down)
+                nextDir = Direction::Up;
+            else if (!m_snake.contains(head + directionToVector(Direction::Down))
+                    && nextDir != Direction::Up)
+                nextDir = Direction::Down;
+        }
+    }
+    
+    return nextDir;
+}
+
+void GameLogic::processDirection(Direction dir)
+{
+    QPointF vector = directionToVector(dir);
+    m_lastDirection = vector;
+    setDirection(vector);
+}
+
+void GameLogic::stepAI()
+{
+    if (m_gameOver)
+        return;
+
+    Direction nextDir = decideDirection(m_snake.first(), m_apple);
+    processDirection(nextDir);
+    
+    step();
+}

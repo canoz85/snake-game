@@ -27,6 +27,9 @@ public:
     // subsequent calls to step() are no-ops.
     bool step();
 
+    //simple ai mode
+    void stepAI();
+
     // --- State accessors ---
     const QVector<QPointF>& snakeBody()  const { return m_snake; } // head at [0]
     QPointF                 applePos()   const { return m_apple; }
@@ -34,7 +37,16 @@ public:
     bool                    isGameOver() const { return m_gameOver; }
     int                     score()      const { return m_score; }
 
+    QPointF                 m_lastDirection;
+
 private:
+    enum class Direction {
+        Up,
+        Down,
+        Left,
+        Right
+    };
+
     QVector<QPointF> m_snake;       // head at index 0, grid coords
     QPointF          m_apple;
     QPointF          m_currentDir;
@@ -44,4 +56,9 @@ private:
     int              m_score    = 0;
 
     void placeApple();
+
+    //simple ai mode
+    QPointF directionToVector(Direction dir);
+    Direction decideDirection(QPointF head, QPointF apple);
+    void processDirection(Direction dir);
 };
