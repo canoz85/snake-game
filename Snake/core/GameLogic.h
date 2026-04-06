@@ -60,5 +60,7 @@ private:
     //simple ai mode
     QPointF directionToVector(Direction dir);
     Direction decideDirection(QPointF head, QPointF apple);
-    void processDirection(Direction dir);
+    bool isSafeMove(QPointF head, QPointF dir);
+    void processMove(Direction dir);
+
 };

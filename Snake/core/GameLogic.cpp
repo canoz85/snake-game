@@ -122,6 +122,11 @@ QPointF GameLogic::directionToVector(Direction dir)
     return QPointF(0, 0); // should never reach here
 }
 
+bool GameLogic::isSafeMove(QPointF head, QPointF dir)
+{
+    return !m_snake.contains(head + dir);
+}
+
 GameLogic::Direction GameLogic::decideDirection(QPointF head, QPointF apple)
 {
     Direction nextDir = Direction::Up; // default value to silence compiler warning, will be overwritten by logic below
@@ -135,27 +140,22 @@ GameLogic::Direction GameLogic::decideDirection(QPointF head, QPointF apple)
    else
        nextDir = Direction::Down;
 
-    if (m_snake.contains(head + directionToVector(nextDir))){
-        if (nextDir == Direction::Up || nextDir == Direction::Down){
-            if (!m_snake.contains(head + directionToVector(Direction::Left)))
-                nextDir = Direction::Left;
-            else if (!m_snake.contains(head + directionToVector(Direction::Right)))
-                nextDir = Direction::Right;
-        }
-        else {
-            if (!m_snake.contains(head + directionToVector(Direction::Up))
-                    && nextDir != Direction::Down)
-                nextDir = Direction::Up;
-            else if (!m_snake.contains(head + directionToVector(Direction::Down))
-                    && nextDir != Direction::Up)
-                nextDir = Direction::Down;
+    if (isSafeMove(head, directionToVector(nextDir)))
+        return nextDir;
+
+    // If the most direct path is blocked, try other directions in order of preference: straight, left, right, back.
+    QList<Direction> allDirs = {Direction::Up, Direction::Down, Direction::Left, Direction::Right};
+    allDirs.removeAll(nextDir); // already checked the preferred direction
+    for (Direction dir : allDirs) {
+        if (isSafeMove(head, directionToVector(dir))) {
+            return dir; 
         }
     }
     
     return nextDir;
 }
 
-void GameLogic::processDirection(Direction dir)
+void GameLogic::processMove(Direction dir)
 {
     QPointF vector = directionToVector(dir);
     m_lastDirection = vector;
@@ -168,7 +168,7 @@ void GameLogic::stepAI()
         return;
 
     Direction nextDir = decideDirection(m_snake.first(), m_apple);
-    processDirection(nextDir);
+    processMove(nextDir);
     
     step();
 }
