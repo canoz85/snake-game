@@ -17,6 +17,14 @@ void SnakeGame::keyPressEvent(QKeyEvent *event)
     case UiState::Playing:
         handleGameplayInput(event);
         break;
+    case UiState::Paused:
+        // Allow pause/resume toggle and escape to menu
+        if (event->key() == Qt::Key_P || event->key() == Qt::Key_Space) {
+            togglePause();
+        } else {
+            QGraphicsView::keyPressEvent(event);
+        }
+        break;
     }
 }
 
@@ -93,6 +101,8 @@ void SnakeGame::handleGameplayInput(QKeyEvent *event)
     case Qt::Key_Down:  m_logic.setDirection(QPointF( 0,  1)); break;
     case Qt::Key_Left:  m_logic.setDirection(QPointF(-1,  0)); break;
     case Qt::Key_Right: m_logic.setDirection(QPointF( 1,  0)); break;
+    case Qt::Key_P:
+    case Qt::Key_Space: togglePause(); break;
     default:
         QGraphicsView::keyPressEvent(event);
     }

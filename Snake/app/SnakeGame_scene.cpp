@@ -34,6 +34,17 @@ void SnakeGame::setupScene()
     m_bestScoreTextItem = sc->addText(QString(), QFont("Consolas", 10, QFont::Bold));
     m_bestScoreTextItem->setDefaultTextColor(SnakeGameConfig::BestScoreTextColor);
     m_bestScoreTextItem->setZValue(4);
+
+    // Create pause overlay text
+    m_pauseTextItem = sc->addText(QString(), QFont("Consolas", 48, QFont::Bold));
+    m_pauseTextItem->setPlainText("PAUSED");
+    m_pauseTextItem->setDefaultTextColor(QColor(255, 255, 255));
+    m_pauseTextItem->setZValue(10);
+    // Center the pause text on the screen
+    const qreal pauseX = (W - m_pauseTextItem->boundingRect().width()) / 2.0;
+    const qreal pauseY = (BoardH - m_pauseTextItem->boundingRect().height()) / 2.0;
+    m_pauseTextItem->setPos(pauseX, pauseY);
+    m_pauseTextItem->setVisible(false);
 }
 
 void SnakeGame::setUiState(UiState state)
@@ -43,7 +54,8 @@ void SnakeGame::setUiState(UiState state)
     const bool menuVisible       = (state == UiState::Menu);
     const bool nameInputVisible  = (state == UiState::NameInput);
     const bool scoreboardVisible = (state == UiState::Scoreboard);
-    const bool gameplayVisible   = !menuVisible;
+    const bool pauseVisible      = (state == UiState::Paused);
+    const bool gameplayVisible   = (state == UiState::Playing || state == UiState::Paused);
 
     if (m_menu)
         m_menu->setVisible(menuVisible);
@@ -51,6 +63,8 @@ void SnakeGame::setUiState(UiState state)
         m_nameInput->setVisible(nameInputVisible);
     if (m_scoreboard)
         m_scoreboard->setVisible(scoreboardVisible);
+    if (m_pauseTextItem)
+        m_pauseTextItem->setVisible(pauseVisible);
 
     if (m_headItem)
         m_headItem->setVisible(gameplayVisible);

@@ -37,6 +37,7 @@ private:
     enum class UiState {
         Menu,
         Playing,
+        Paused,
         NameInput,
         Scoreboard,
     };
@@ -58,6 +59,7 @@ private:
     void handleNameInput(QKeyEvent *event);
     void handleScoreboardInput(QKeyEvent *event);
     void handleGameplayInput(QKeyEvent *event);
+    void togglePause();
 
     // Head shape helpers — return geometry in local cell coords (origin = top-left)
     QPolygonF headPolygon(QPointF dir) const;
@@ -79,4 +81,6 @@ private:
     QGraphicsRectItem*          m_scoreBarItem = nullptr;
     QGraphicsTextItem*          m_scoreTextItem = nullptr;
     QGraphicsTextItem*          m_bestScoreTextItem = nullptr;
+    QGraphicsTextItem*          m_pauseTextItem = nullptr;
+    UiState    m_previousState = UiState::Playing; // track state before pause
 };

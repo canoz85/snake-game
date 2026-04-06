@@ -99,3 +99,13 @@ void SnakeGame::onNameInputDone()
     setUiState(UiState::Scoreboard);
     m_scoreboardFromStart = false;
 }
+
+void SnakeGame::togglePause()
+{
+    if (m_uiState == UiState::Playing) {
+        m_previousState = UiState::Playing;
+        setUiState(UiState::Paused);
+    } else if (m_uiState == UiState::Paused) {
+        setUiState(UiState::Playing);
+    }
+}
