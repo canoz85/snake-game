@@ -162,13 +162,10 @@ void GameLogic::processMove(Direction dir)
     setDirection(vector);
 }
 
-void GameLogic::stepAI()
+bool GameLogic::stepAI()
 {
-    if (m_gameOver)
-        return;
-
     Direction nextDir = decideDirection(m_snake.first(), m_apple);
     processMove(nextDir);
     
-    step();
+    return step();
 }

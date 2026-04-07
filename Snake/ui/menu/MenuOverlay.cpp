@@ -59,7 +59,7 @@ void MenuOverlay::showStartMenu()
     setMenu(
         "SNAKE GAME // ʙᴀᴛᴜ & ᴄᴀɴ",
         "arrows to navigate • enter to select",
-        {"Start", "Scoreboard", "Exit"}
+        {"Start", "Start AI", "Scoreboard", "Exit"}
     );
     setVisible(true);
 }
@@ -69,7 +69,7 @@ void MenuOverlay::showGameOverMenu(int score)
     setMenu(
         QString("GAME OVER // SCORE: %1").arg(score),
         "arrows to navigate • enter to select",
-        {"Restart", "Back to Menu", "Exit"}
+        {"Restart", "Start AI", "Back to Menu", "Exit"}
     );
     setVisible(true);
 }
@@ -113,6 +113,8 @@ MenuOverlay::Action MenuOverlay::activateSelection() const
     const QString current = m_items.at(m_selection);
     if (current == "Start")
         return Action::Start;
+    if (current == "Start AI")
+        return Action::StartAI;
     if (current == "Restart")
         return Action::Restart;
     if (current == "Back to Menu")

@@ -28,7 +28,9 @@ public:
     bool step();
 
     //simple ai mode
-    void stepAI();
+    bool stepAI();
+    void setAIMode(bool enabled) { m_aiMode = enabled;}
+    bool isAIMode() const { return m_aiMode; }  
 
     // --- State accessors ---
     const QVector<QPointF>& snakeBody()  const { return m_snake; } // head at [0]
@@ -53,11 +55,13 @@ private:
     QPointF          m_queuedDir;
     bool             m_hasQueuedDir = false;
     bool             m_gameOver = false;
+    bool             m_aiMode = false;
     int              m_score    = 0;
 
     void placeApple();
 
     //simple ai mode
+    
     QPointF directionToVector(Direction dir);
     Direction decideDirection(QPointF head, QPointF apple);
     bool isSafeMove(QPointF head, QPointF dir);

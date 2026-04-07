@@ -152,10 +152,10 @@ void SnakeGame::updateScoreDisplay()
         bestLabel = QString("Best: %1 (%2)").arg(best.name, QString::number(best.score));
     }
 
-    bestLabel = m_logic.m_lastDirection == QPointF(0, 1) ? "Down" : (
-                m_logic.m_lastDirection == QPointF(0, -1) ? "Up" : (
-                m_logic.m_lastDirection == QPointF(1, 0) ? "Right" : (
-                m_logic.m_lastDirection == QPointF(-1, 0) ? "Left" : "None")));
+    // bestLabel = m_logic.m_lastDirection == QPointF(0, 1) ? "Down" : (
+    //             m_logic.m_lastDirection == QPointF(0, -1) ? "Up" : (
+    //             m_logic.m_lastDirection == QPointF(1, 0) ? "Right" : (
+    //             m_logic.m_lastDirection == QPointF(-1, 0) ? "Left" : "None")));
 
     m_bestScoreTextItem->setPlainText(bestLabel);
     const QRectF bestBounds = m_bestScoreTextItem->boundingRect();
