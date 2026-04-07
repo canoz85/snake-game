@@ -106,3 +106,66 @@ void GameLogic::placeApple()
 
     m_apple = freeCells.at(QRandomGenerator::global()->bounded(freeCells.size()));
 }
+
+QPointF GameLogic::directionToVector(Direction dir)
+{
+    switch (dir) {
+    case Direction::Up:
+        return QPointF(0, -1);
+    case Direction::Down:
+        return QPointF(0, 1);
+    case Direction::Left:
+        return QPointF(-1, 0);
+    case Direction::Right:
+        return QPointF(1, 0);
+    }
+    return QPointF(0, 0); // should never reach here
+}
+
+bool GameLogic::isSafeMove(QPointF head, QPointF dir)
+{
+    return !m_snake.contains(head + dir);
+}
+
+GameLogic::Direction GameLogic::decideDirection(QPointF head, QPointF apple)
+{
+    Direction nextDir = Direction::Up; // default value to silence compiler warning, will be overwritten by logic below
+
+    if (apple.x() < head.x())
+       nextDir = Direction::Left;
+   else if (apple.x() > head.x())
+       nextDir = Direction::Right;
+   else if (apple.y() < head.y())
+       nextDir = Direction::Up;
+   else
+       nextDir = Direction::Down;
+
+    if (isSafeMove(head, directionToVector(nextDir)))
+        return nextDir;
+
+    // If the most direct path is blocked, try other directions in order of preference: straight, left, right, back.
+    QList<Direction> allDirs = {Direction::Up, Direction::Down, Direction::Left, Direction::Right};
+    allDirs.removeAll(nextDir); // already checked the preferred direction
+    for (Direction dir : allDirs) {
+        if (isSafeMove(head, directionToVector(dir))) {
+            return dir; 
+        }
+    }
+    
+    return nextDir;
+}
+
+void GameLogic::processMove(Direction dir)
+{
+    QPointF vector = directionToVector(dir);
+    m_lastDirection = vector;
+    setDirection(vector);
+}
+
+bool GameLogic::stepAI()
+{
+    Direction nextDir = decideDirection(m_snake.first(), m_apple);
+    processMove(nextDir);
+    
+    return step();
+}

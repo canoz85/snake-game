@@ -25,7 +25,7 @@ class SnakeGame : public QGraphicsView
 public:
     explicit SnakeGame(QWidget *parent = nullptr);
 
-    void newGame();
+    void newGame(bool aiMode = false);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;

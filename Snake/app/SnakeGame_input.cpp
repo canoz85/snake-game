@@ -69,8 +69,9 @@ void SnakeGame::handleMenuInput(QKeyEvent *event)
     case Qt::Key_Enter:
     case Qt::Key_Return: {
         const MenuOverlay::Action action = m_menu->activateSelection();
-        if (action == MenuOverlay::Action::Start || action == MenuOverlay::Action::Restart) {
-            newGame();
+        if (action == MenuOverlay::Action::Start || action == MenuOverlay::Action::Restart
+            || action == MenuOverlay::Action::StartAI) {
+            newGame(action == MenuOverlay::Action::StartAI);
             setMenuVisible(false);
         } else if (action == MenuOverlay::Action::BackToMenu) {
             m_menu->showStartMenu();
