@@ -1,6 +1,7 @@
 #include "GameLogic.h"
 
 #include <QtGlobal>
+#include <limits>
 
 GameLogic::GameLogic()
 {
@@ -129,30 +130,220 @@ bool GameLogic::isSafeMove(QPointF head, QPointF dir)
 
 GameLogic::Direction GameLogic::decideDirection(QPointF head, QPointF apple)
 {
-    Direction nextDir = Direction::Up; // default value to silence compiler warning, will be overwritten by logic below
+    struct ANode {
+        int x = 0;
+        int y = 0;
+    };
 
-    if (apple.x() < head.x())
-       nextDir = Direction::Left;
-   else if (apple.x() > head.x())
-       nextDir = Direction::Right;
-   else if (apple.y() < head.y())
-       nextDir = Direction::Up;
-   else
-       nextDir = Direction::Down;
+    const auto wrapCoord = [](int value, int maxValue) {
+        if (value < 0)
+            return maxValue - 1;
+        if (value >= maxValue)
+            return 0;
+        return value;
+    };
 
-    if (isSafeMove(head, directionToVector(nextDir)))
-        return nextDir;
+    const auto toNode = [](const QPointF &p) {
+        return ANode{static_cast<int>(p.x()), static_cast<int>(p.y())};
+    };
 
-    // If the most direct path is blocked, try other directions in order of preference: straight, left, right, back.
-    QList<Direction> allDirs = {Direction::Up, Direction::Down, Direction::Left, Direction::Right};
-    allDirs.removeAll(nextDir); // already checked the preferred direction
-    for (Direction dir : allDirs) {
-        if (isSafeMove(head, directionToVector(dir))) {
-            return dir; 
+    const auto toIndex = [](int x, int y) {
+        return y * Columns + x;
+    };
+
+    const auto stateId = [toIndex](int x, int y, int t) {
+        return t * (Rows * Columns) + toIndex(x, y);
+    };
+
+    const auto stateCell = [](int sid) {
+        return sid % (Rows * Columns);
+    };
+
+    const auto stateTime = [](int sid) {
+        return sid / (Rows * Columns);
+    };
+
+    const auto torusHeuristic = [](const ANode &a, const ANode &b) {
+        const int dx = qAbs(a.x - b.x);
+        const int dy = qAbs(a.y - b.y);
+        return qMin(dx, Columns - dx) + qMin(dy, Rows - dy);
+    };
+
+    const auto nodeFromIndex = [](int idx) {
+        return ANode{idx % Columns, idx / Columns};
+    };
+
+    const ANode start = toNode(head);
+    const ANode goal  = toNode(apple);
+
+    const int total = Rows * Columns;
+    const int startIdx = toIndex(start.x, start.y);
+    const int goalIdx  = toIndex(goal.x, goal.y);
+    const int maxTime = total;
+    const int totalStates = (maxTime + 1) * total;
+    const int startState = stateId(start.x, start.y, 0);
+
+    // Release step for each initially occupied cell: cell is blocked while step < releaseStep.
+    QVector<int> releaseStep(total, 0);
+    for (int i = 0; i < m_snake.size(); ++i) {
+        const QPointF seg = m_snake.at(i);
+        const int idx = toIndex(static_cast<int>(seg.x()), static_cast<int>(seg.y()));
+        releaseStep[idx] = m_snake.size() - i;
+    }
+
+    QVector<int> gScore(totalStates, std::numeric_limits<int>::max());
+    QVector<int> fScore(totalStates, std::numeric_limits<int>::max());
+    QVector<int> cameFrom(totalStates, -1);
+    QVector<bool> inOpen(totalStates, false);
+    QVector<bool> closed(totalStates, false);
+    QVector<int> openSet;
+    openSet.reserve(total * 2);
+
+    gScore[startState] = 0;
+    fScore[startState] = torusHeuristic(start, goal);
+    inOpen[startState] = true;
+    openSet.append(startState);
+
+    const QList<Direction> dirs = {
+        Direction::Up,
+        Direction::Down,
+        Direction::Left,
+        Direction::Right
+    };
+
+    int goalState = -1;
+
+    while (!openSet.isEmpty()) {
+        int bestPos = 0;
+        for (int i = 1; i < openSet.size(); ++i) {
+            if (fScore[openSet[i]] < fScore[openSet[bestPos]])
+                bestPos = i;
+        }
+
+        const int currentState = openSet.at(bestPos);
+        openSet.removeAt(bestPos);
+        inOpen[currentState] = false;
+        closed[currentState] = true;
+
+        const int currentCell = stateCell(currentState);
+        const int currentT = stateTime(currentState);
+        const ANode currentNode = nodeFromIndex(currentCell);
+
+        if (currentCell == goalIdx) {
+            goalState = currentState;
+            break;
+        }
+
+        if (currentT >= maxTime)
+            continue;
+
+        for (Direction dir : dirs) {
+            const QPointF vec = directionToVector(dir);
+
+            // Respect no-reverse rule for the immediate next move.
+            if (currentT == 0 && (m_currentDir + vec == QPointF(0, 0)))
+                continue;
+
+            const int nx = wrapCoord(currentNode.x + static_cast<int>(vec.x()), Columns);
+            const int ny = wrapCoord(currentNode.y + static_cast<int>(vec.y()), Rows);
+            const int neighborCell = toIndex(nx, ny);
+            const int nextT = currentT + 1;
+            const int neighborState = stateId(nx, ny, nextT);
+
+            if (closed[neighborState])
+                continue;
+
+            // Initially occupied body cells become available only after their release step.
+            if (nextT < releaseStep[neighborCell])
+                continue;
+
+            // Prevent self-intersection against planned recent head trail.
+            bool hitsPlannedBody = false;
+            int back = currentState;
+            int depth = 0;
+            while (back != -1 && depth < (m_snake.size() - 1)) {
+                if (stateCell(back) == neighborCell) {
+                    hitsPlannedBody = true;
+                    break;
+                }
+                back = cameFrom[back];
+                ++depth;
+            }
+            if (hitsPlannedBody)
+                continue;
+
+            const int tentativeG = gScore[currentState] + 1;
+            if (tentativeG >= gScore[neighborState])
+                continue;
+
+            cameFrom[neighborState] = currentState;
+            gScore[neighborState] = tentativeG;
+            fScore[neighborState] = tentativeG + torusHeuristic(ANode{nx, ny}, goal);
+
+            if (!inOpen[neighborState]) {
+                inOpen[neighborState] = true;
+                openSet.append(neighborState);
+            }
         }
     }
-    
-    return nextDir;
+
+    if (goalState != -1) {
+        int stepState = goalState;
+        while (cameFrom[stepState] != startState)
+            stepState = cameFrom[stepState];
+
+        const int stepIdx = stateCell(stepState);
+        const ANode step = nodeFromIndex(stepIdx);
+        const int dx = (step.x - start.x + Columns) % Columns;
+        const int dy = (step.y - start.y + Rows) % Rows;
+
+        if (dx == 1)
+            return Direction::Right;
+        if (dx == Columns - 1)
+            return Direction::Left;
+        if (dy == 1)
+            return Direction::Down;
+        if (dy == Rows - 1)
+            return Direction::Up;
+    }
+
+    // Fallback: pick the safest local move with best wrap-aware heuristic.
+    Direction bestDir = Direction::Up;
+    int bestH = std::numeric_limits<int>::max();
+    bool foundSafe = false;
+
+    for (Direction dir : dirs) {
+        const QPointF vec = directionToVector(dir);
+        if (m_currentDir + vec == QPointF(0, 0))
+            continue;
+
+        const int nx = wrapCoord(start.x + static_cast<int>(vec.x()), Columns);
+        const int ny = wrapCoord(start.y + static_cast<int>(vec.y()), Rows);
+        const int nextCell = toIndex(nx, ny);
+
+        if (1 < releaseStep[nextCell])
+            continue;
+
+        const int h = torusHeuristic(ANode{nx, ny}, goal);
+        if (h < bestH) {
+            bestH = h;
+            bestDir = dir;
+            foundSafe = true;
+        }
+    }
+
+    if (foundSafe)
+        return bestDir;
+
+    // Last resort: keep current direction to preserve deterministic behavior.
+    if (m_currentDir == QPointF(1, 0))
+        return Direction::Right;
+    if (m_currentDir == QPointF(-1, 0))
+        return Direction::Left;
+    if (m_currentDir == QPointF(0, 1))
+        return Direction::Down;
+
+    return Direction::Up;
 }
 
 void GameLogic::processMove(Direction dir)
