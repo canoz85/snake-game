@@ -22,6 +22,7 @@ void GameLogic::reset()
     m_currentDir = QPointF(1, 0); // start moving right
     m_queuedDir  = m_currentDir;
     m_hasQueuedDir = false;
+    m_stepsSinceLastFood = 0;
 
     // Build initial snake horizontally in the middle of the grid.
     // Segment 0 is the head (rightmost), subsequent segments trail left.
@@ -276,13 +277,13 @@ int GameLogic::sendActRequest(const QJsonArray &state, bool *ok) const
         return -1;
     }
 
-    qDebug() << "act: received action" << action << "for state" << state;
+    //qDebug() << "act: received action" << action << "for state" << state;
     *ok = true;
     return action;
 }
 
 bool GameLogic::sendTrainPacket(const QJsonArray &state, int action, double reward,
-                                 const QJsonArray &nextState, bool done) const
+                                 const QJsonArray &nextState, bool done, int snakeSize) const
 {
     QJsonObject payload;
     payload["mode"]       = "train";
@@ -291,6 +292,7 @@ bool GameLogic::sendTrainPacket(const QJsonArray &state, int action, double rewa
     payload["reward"]     = reward;
     payload["next_state"] = nextState;
     payload["done"]       = done;
+    payload["size"]       = snakeSize;
 
     bool ok = false;
     const QByteArray response = tcpExchange(payload, &ok);
@@ -568,21 +570,53 @@ bool GameLogic::stepAI()
         }
     }
 
+    struct ANode {
+        int x = 0;
+        int y = 0;
+    };
+
+    const auto torusHeuristic = [](const ANode &a, const ANode &b) {
+        const int dx = qAbs(a.x - b.x);
+        const int dy = qAbs(a.y - b.y);
+        return qMin(dx, Columns - dx) + qMin(dy, Rows - dy);
+    };
+
+    const auto distanceToApple = [&](QPointF head, QPointF apple) {
+        const ANode a{static_cast<int>(head.x()), static_cast<int>(head.y())};
+        const ANode b{static_cast<int>(apple.x()), static_cast<int>(apple.y())};
+        return torusHeuristic(a, b);
+    };
+
+    QPointF prevHead = m_snake.first();
+
     // --- Step 2: apply action, evaluate outcome ---
+    ++m_stepsSinceLastFood;
+    const int starvationLimit = 100 * m_snake.size();
+
     processMove(dir);
+
     const bool ateApple = step();
     const bool died     = m_gameOver;
 
-    const double reward = died ? -10.0 : (ateApple ? 10.0 : -0.1);
-    const bool   done   = died;
+    if (ateApple)
+        m_stepsSinceLastFood = 0;
+
+    const bool starved = !died && (m_stepsSinceLastFood > starvationLimit);
+
+    float prevDist = distanceToApple(prevHead, m_apple);
+    float dist = distanceToApple(m_snake.first(), m_apple);
+    //qDebug() << "prevDist" << prevDist << "dist" << dist;
+
+    const double reward = (died || starved) ? -10.0 : (ateApple ? 10.0 : ((dist < prevDist) ? 0.1 : -0.2));
+    const bool   done   = died || starved;
 
     // --- Step 3: send training packet ---
     if (gotAction) {
         const QJsonArray nextState = buildObservationState(m_snake.first(), m_apple);
-        sendTrainPacket(state, actionInt, reward, nextState, done);
+        sendTrainPacket(state, actionInt, reward, nextState, done, m_snake.size());
     }
 
-    // --- Step 4: auto-reset episode on death (keeps the timer running) ---
+    // --- Step 4: auto-reset episode on death or starvation (keeps the timer running) ---
     if (done)
         reset();
 
