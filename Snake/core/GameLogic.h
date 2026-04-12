@@ -4,6 +4,8 @@
 #include <QVector>
 #include <QRandomGenerator>
 
+class QJsonArray;
+
 // Pure game-logic class — no Qt graphics dependency.
 // All positions are in grid coordinates (col, row).
 class GameLogic
@@ -60,11 +62,16 @@ private:
 
     void placeApple();
 
-    //simple ai mode
-    
-    QPointF directionToVector(Direction dir);
-    Direction decideDirection(QPointF head, QPointF apple);
-    bool isSafeMove(QPointF head, QPointF dir);
+    QPointF directionToVector(Direction dir) const;
+    bool isSafeMove(QPointF head, QPointF dir) const;
     void processMove(Direction dir);
+
+    // RL helpers
+    QJsonArray buildObservationState(QPointF head, QPointF apple) const;
+    Direction  fallbackDirection(QPointF head) const;
+    Direction  actionToDirection(int action, bool *ok) const;
+    int  sendActRequest(const QJsonArray &state, bool *ok) const;
+    bool sendTrainPacket(const QJsonArray &state, int action, double reward,
+                         const QJsonArray &nextState, bool done) const;
 
 };

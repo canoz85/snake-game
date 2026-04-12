@@ -1,5 +1,11 @@
 #include "GameLogic.h"
 
+
+#include <QTcpSocket>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QDebug>
 #include <QtGlobal>
 #include <limits>
 
@@ -108,7 +114,7 @@ void GameLogic::placeApple()
     m_apple = freeCells.at(QRandomGenerator::global()->bounded(freeCells.size()));
 }
 
-QPointF GameLogic::directionToVector(Direction dir)
+QPointF GameLogic::directionToVector(Direction dir) const
 {
     switch (dir) {
     case Direction::Up:
@@ -123,12 +129,201 @@ QPointF GameLogic::directionToVector(Direction dir)
     return QPointF(0, 0); // should never reach here
 }
 
-bool GameLogic::isSafeMove(QPointF head, QPointF dir)
+bool GameLogic::isSafeMove(QPointF head, QPointF dir) const
 {
     return !m_snake.contains(head + dir);
 }
 
-GameLogic::Direction GameLogic::decideDirection(QPointF head, QPointF apple)
+// Opens a short-lived TCP connection, sends payload, returns trimmed reply.
+static QByteArray tcpExchange(const QJsonObject &payload, bool *ok)
+{
+    *ok = false;
+
+    QTcpSocket socket;
+    socket.connectToHost("127.0.0.1", 12345);
+    if (!socket.waitForConnected(500)) {
+        qWarning() << "TCP connect failed:" << socket.errorString();
+        return {};
+    }
+
+    const QByteArray data = QJsonDocument(payload).toJson(QJsonDocument::Compact) + '\n';
+    if (socket.write(data) < 0) {
+        qWarning() << "TCP write failed:" << socket.errorString();
+        return {};
+    }
+    socket.flush();
+    if (socket.bytesToWrite() > 0)
+        socket.waitForBytesWritten(500);
+
+    if (!socket.waitForReadyRead(500)) {
+        qWarning() << "TCP no reply:" << socket.errorString();
+        return {};
+    }
+
+    *ok = true;
+    return socket.readAll().trimmed();
+}
+
+QJsonArray GameLogic::buildObservationState(QPointF head, QPointF apple) const
+{
+    const auto wrapCoord = [](int value, int maxValue) {
+        if (value < 0)
+            return maxValue - 1;
+        if (value >= maxValue)
+            return 0;
+        return value;
+    };
+
+    const auto wrappedDelta = [](int from, int to, int size) {
+        const int direct = to - from;
+        const int wrapped = (direct > 0) ? (direct - size) : (direct + size);
+        return (qAbs(direct) <= qAbs(wrapped)) ? direct : wrapped;
+    };
+
+    QJsonArray state;
+
+    const QPointF dirVec = m_currentDir;
+    const QPointF dirRight(-dirVec.y(), dirVec.x());
+    const QPointF dirLeft(dirVec.y(), -dirVec.x());
+
+    auto isUnsafe = [&](QPointF p) {
+        const int nx = wrapCoord(static_cast<int>(p.x()), Columns);
+        const int ny = wrapCoord(static_cast<int>(p.y()), Rows);
+
+        const bool grows = (nx == static_cast<int>(apple.x())
+                            && ny == static_cast<int>(apple.y()));
+        const int collisionSegments = grows ? m_snake.size() : (m_snake.size() - 1);
+
+        for (int i = 0; i < collisionSegments; ++i) {
+            const QPointF &seg = m_snake.at(i);
+            if (static_cast<int>(seg.x()) == nx && static_cast<int>(seg.y()) == ny)
+                return 1;
+        }
+        return 0;
+    };
+
+    const int dx = wrappedDelta(static_cast<int>(head.x()), static_cast<int>(apple.x()), Columns);
+    const int dy = wrappedDelta(static_cast<int>(head.y()), static_cast<int>(apple.y()), Rows);
+
+    state.append(isUnsafe(head + dirVec));
+    state.append(isUnsafe(head + dirRight));
+    state.append(isUnsafe(head + dirLeft));
+
+    state.append(m_currentDir == directionToVector(Direction::Left) ? 1 : 0);
+    state.append(m_currentDir == directionToVector(Direction::Right) ? 1 : 0);
+    state.append(m_currentDir == directionToVector(Direction::Up) ? 1 : 0);
+    state.append(m_currentDir == directionToVector(Direction::Down) ? 1 : 0);
+
+    state.append(dx < 0 ? 1 : 0);
+    state.append(dx > 0 ? 1 : 0);
+    state.append(dy < 0 ? 1 : 0);
+    state.append(dy > 0 ? 1 : 0);
+
+    return state;
+}
+
+GameLogic::Direction GameLogic::fallbackDirection(QPointF head) const
+{
+    const auto vectorToDirection = [&](const QPointF &dir) {
+        if (dir == directionToVector(Direction::Left))
+            return Direction::Left;
+        if (dir == directionToVector(Direction::Right))
+            return Direction::Right;
+        if (dir == directionToVector(Direction::Down))
+            return Direction::Down;
+        return Direction::Up;
+    };
+
+    if (!m_snake.isEmpty() && isSafeMove(head, m_currentDir))
+        return vectorToDirection(m_currentDir);
+
+    const QList<Direction> dirs = {
+        Direction::Up,
+        Direction::Down,
+        Direction::Left,
+        Direction::Right
+    };
+
+    for (Direction dir : dirs) {
+        const QPointF vec = directionToVector(dir);
+        if (m_currentDir + vec == QPointF(0, 0))
+            continue;
+        if (isSafeMove(head, vec))
+            return dir;
+    }
+
+    return vectorToDirection(m_currentDir);
+}
+
+int GameLogic::sendActRequest(const QJsonArray &state, bool *ok) const
+{
+    QJsonObject payload;
+    payload["mode"]  = "act";
+    payload["state"] = state;
+
+    bool exchangeOk = false;
+    const QByteArray response = tcpExchange(payload, &exchangeOk);
+    if (!exchangeOk) {
+        *ok = false;
+        return -1;
+    }
+
+    bool parseOk = false;
+    const int action = response.toInt(&parseOk);
+    if (!parseOk) {
+        qWarning() << "act: unexpected response:" << response;
+        *ok = false;
+        return -1;
+    }
+
+    qDebug() << "act: received action" << action << "for state" << state;
+    *ok = true;
+    return action;
+}
+
+bool GameLogic::sendTrainPacket(const QJsonArray &state, int action, double reward,
+                                 const QJsonArray &nextState, bool done) const
+{
+    QJsonObject payload;
+    payload["mode"]       = "train";
+    payload["state"]      = state;
+    payload["action"]     = action;
+    payload["reward"]     = reward;
+    payload["next_state"] = nextState;
+    payload["done"]       = done;
+
+    bool ok = false;
+    const QByteArray response = tcpExchange(payload, &ok);
+    if (!ok)
+        return false;
+
+    if (response != "ok")
+        qWarning() << "train: unexpected response:" << response;
+
+    return true;
+}
+
+GameLogic::Direction GameLogic::actionToDirection(int action, bool *ok) const
+{
+    *ok = true;
+
+    switch (action) {
+    case 0:
+        return Direction::Up;
+    case 1:
+        return Direction::Down;
+    case 2:
+        return Direction::Left;
+    case 3:
+        return Direction::Right;
+    default:
+        *ok = false;
+        return Direction::Up;
+    }
+}
+
+/*
+GameLogic::Direction GameLogic::decideDirection_(QPointF head, QPointF apple)
 {
     struct ANode {
         int x = 0;
@@ -345,6 +540,7 @@ GameLogic::Direction GameLogic::decideDirection(QPointF head, QPointF apple)
 
     return Direction::Up;
 }
+    */
 
 void GameLogic::processMove(Direction dir)
 {
@@ -355,8 +551,40 @@ void GameLogic::processMove(Direction dir)
 
 bool GameLogic::stepAI()
 {
-    Direction nextDir = decideDirection(m_snake.first(), m_apple);
-    processMove(nextDir);
-    
-    return step();
+    // --- Step 1: ask the server for an action ---
+    const QJsonArray state = buildObservationState(m_snake.first(), m_apple);
+
+    bool gotAction = false;
+    const int actionInt = sendActRequest(state, &gotAction);
+
+    Direction dir = fallbackDirection(m_snake.first());
+    if (gotAction) {
+        bool validAction = false;
+        dir = actionToDirection(actionInt, &validAction);
+        if (!validAction) {
+            qWarning() << "stepAI: action out of range:" << actionInt;
+            dir = fallbackDirection(m_snake.first());
+            gotAction = false;
+        }
+    }
+
+    // --- Step 2: apply action, evaluate outcome ---
+    processMove(dir);
+    const bool ateApple = step();
+    const bool died     = m_gameOver;
+
+    const double reward = died ? -10.0 : (ateApple ? 10.0 : -0.1);
+    const bool   done   = died;
+
+    // --- Step 3: send training packet ---
+    if (gotAction) {
+        const QJsonArray nextState = buildObservationState(m_snake.first(), m_apple);
+        sendTrainPacket(state, actionInt, reward, nextState, done);
+    }
+
+    // --- Step 4: auto-reset episode on death (keeps the timer running) ---
+    if (done)
+        reset();
+
+    return ateApple;
 }

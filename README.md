@@ -9,8 +9,9 @@ A classic Snake game built with **Qt6 + C++** and **CMake**.
 - The board wraps at all four edges — no wall deaths
 - The only way to die is **running into your own body**
 - Only one turn is applied per game tick, so rapid double-key sequences won't cause false collisions
-- Includes an **AI mode** from the menu (**Start AI**) that controls the snake automatically
-- AI pathfinding uses **time-aware A\*** on the wrapped grid, so it plans with future tail movement in mind
+- Includes two AI menu modes:
+    - **Start AI**: visual AI play with normal tick speed and rendering
+    - **Train AI**: headless fast-training mode (no board UI rendering)
 - Beat the all-time high score → type your name in the in-scene name-input prompt to save your entry
 - View the **top-5 leaderboard** from the start menu (Scoreboard) or automatically after every game
 
@@ -20,10 +21,68 @@ A classic Snake game built with **Qt6 + C++** and **CMake**.
 |-----|--------|
 | ↑ ↓ ← → | Move / navigate menu |
 | Enter / → | Confirm menu selection |
+| P / Space | Pause / resume (non-training gameplay) |
 
-AI mode is started from the menu by selecting **Start AI**.
+AI modes are started from the menu by selecting **Start AI** or **Train AI**.
 
-## AI Algorithm (A*)
+## AI Integration (Socket + RL Loop)
+
+The C++ game communicates with a Python server on `127.0.0.1:12345` using short-lived TCP requests.
+
+Per AI tick, the game uses this observation state (11 values):
+
+```text
+[danger_straight, danger_right, danger_left,
+ dir_left, dir_right, dir_up, dir_down,
+ food_left, food_right, food_up, food_down]
+```
+
+Actions returned by Python:
+
+- `0 = Up`
+- `1 = Down`
+- `2 = Left`
+- `3 = Right`
+
+Per-tick protocol:
+
+1. **Act request** (before move)
+
+```json
+{"mode":"act","state":[...]}
+```
+
+Server responds with a plain digit string such as `"2"`.
+
+2. **Apply action in C++** and evaluate transition:
+
+- apple eaten: `reward = 10.0`
+- snake died: `reward = -10.0`, `done = true`
+- otherwise: `reward = -0.1`
+
+3. **Train request** (after move)
+
+```json
+{
+    "mode": "train",
+    "state": [...],
+    "action": 2,
+    "reward": -0.1,
+    "next_state": [...],
+    "done": false
+}
+```
+
+Server responds with `"ok"`.
+
+### Train AI Mode
+
+`Train AI` is optimized for speed:
+
+- game runs multiple logic steps per timer tick
+- board visuals are hidden (head/body/apple/score bar)
+- debug socket logs remain enabled
+- episodes auto-reset after death to continue training
 
 The AI uses a **time-expanded A\*** search where each node is `(x, y, t)`:
 
@@ -60,10 +119,10 @@ Snake/
 │   ├── SnakeGame.cpp                # Constructor/bootstrap wiring
 │   ├── SnakeGame_scene.cpp          # Scene setup + rendering helpers
 │   ├── SnakeGame_input.cpp          # Input/menu routing
-│   ├── SnakeGame_flow.cpp           # Tick loop + game-over flow
+│   ├── SnakeGame_flow.cpp           # Tick loop + normal/AI/train flow
 │   └── SnakeGame.ui                 # Qt Designer UI file
 ├── core/
-│   └── GameLogic.h/cpp              # Pure game state & rules (no Qt graphics)
+│   └── GameLogic.h/cpp              # Game rules + AI socket/RL bridge
 ├── data/
 │   └── ScoreDB.h/cpp                # SQLite persistence layer (Qt6::Sql / QSQLITE)
 └── ui/

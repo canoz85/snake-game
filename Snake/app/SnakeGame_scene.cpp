@@ -55,7 +55,7 @@ void SnakeGame::setUiState(UiState state)
     const bool nameInputVisible  = (state == UiState::NameInput);
     const bool scoreboardVisible = (state == UiState::Scoreboard);
     const bool pauseVisible      = (state == UiState::Paused);
-    const bool gameplayVisible   = (state == UiState::Playing || state == UiState::Paused);
+    const bool gameplayVisible   = (state == UiState::Playing || state == UiState::Paused) && !m_trainingMode;
 
     if (m_menu)
         m_menu->setVisible(menuVisible);
@@ -68,12 +68,18 @@ void SnakeGame::setUiState(UiState state)
 
     if (m_headItem)
         m_headItem->setVisible(gameplayVisible);
-    if (m_headEyeItem)
-        m_headEyeItem->setVisible(gameplayVisible);
+    for (auto *item : std::as_const(m_headEyeItems))
+        item->setVisible(gameplayVisible);
     for (auto *item : std::as_const(m_snakeItems))
         item->setVisible(gameplayVisible);
     if (m_appleItem)
         m_appleItem->setVisible(gameplayVisible);
+    if (m_scoreBarItem)
+        m_scoreBarItem->setVisible(gameplayVisible);
+    if (m_scoreTextItem)
+        m_scoreTextItem->setVisible(gameplayVisible);
+    if (m_bestScoreTextItem)
+        m_bestScoreTextItem->setVisible(gameplayVisible);
 }
 
 void SnakeGame::setMenuVisible(bool visible)
@@ -92,10 +98,11 @@ void SnakeGame::syncGraphics()
         m_headItem->setPos(body.first().x() * CellSize,
                            body.first().y() * CellSize);
     }
-    if (m_headEyeItem) {
-        m_headEyeItem->setRect(eyeRect(dir));
-        m_headEyeItem->setPos(body.first().x() * CellSize,
-                              body.first().y() * CellSize);
+    const QVector<QRectF> eyes = eyeRects(dir);
+    for (int i = 0; i < m_headEyeItems.size() && i < eyes.size(); ++i) {
+        m_headEyeItems[i]->setRect(eyes[i]);
+        m_headEyeItems[i]->setPos(body.first().x() * CellSize,
+                                  body.first().y() * CellSize);
     }
 
     ensureSnakeItems(body.size() - 1);
@@ -105,7 +112,12 @@ void SnakeGame::syncGraphics()
             body[i].y() * CellSize,
             CellSize, CellSize
         );
+        m_snakeItems[i - 1]->setVisible(true);
     }
+
+    // Hide pooled body items that are not used by the current snake length.
+    for (int i = body.size() - 1; i < m_snakeItems.size(); ++i)
+        m_snakeItems[i]->setVisible(false);
 
     if (m_appleItem) {
         const QPointF ap = m_logic.applePos();
@@ -191,16 +203,26 @@ QPolygonF SnakeGame::headPolygon(QPointF dir) const
     return poly;
 }
 
-QRectF SnakeGame::eyeRect(QPointF dir) const
+QVector<QRectF> SnakeGame::eyeRects(QPointF dir) const
 {
     const qreal S  = CellSize;
     const qreal es = 3.5;
+    QVector<QRectF> eyes;
+    eyes.reserve(2);
 
-    QPointF ep;
-    if      (dir == QPointF( 1,  0)) ep = QPointF(S * 0.58, S * 0.20);
-    else if (dir == QPointF(-1,  0)) ep = QPointF(S * 0.20, S * 0.20);
-    else if (dir == QPointF( 0,  1)) ep = QPointF(S * 0.20, S * 0.58);
-    else                              ep = QPointF(S * 0.20, S * 0.20);
+    if (dir == QPointF(1, 0)) {
+        eyes << QRectF(S * 0.56, S * 0.22, es, es)
+             << QRectF(S * 0.56, S * 0.58, es, es);
+    } else if (dir == QPointF(-1, 0)) {
+        eyes << QRectF(S * 0.22, S * 0.22, es, es)
+             << QRectF(S * 0.22, S * 0.58, es, es);
+    } else if (dir == QPointF(0, 1)) {
+        eyes << QRectF(S * 0.22, S * 0.56, es, es)
+             << QRectF(S * 0.58, S * 0.56, es, es);
+    } else {
+        eyes << QRectF(S * 0.22, S * 0.22, es, es)
+             << QRectF(S * 0.58, S * 0.22, es, es);
+    }
 
-    return QRectF(ep.x(), ep.y(), es, es);
+    return eyes;
 }

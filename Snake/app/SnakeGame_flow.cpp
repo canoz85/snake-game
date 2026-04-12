@@ -6,18 +6,18 @@
 #include <QPen>
 #include <QColor>
 
-void SnakeGame::newGame(bool aiMode)
+void SnakeGame::newGame(bool aiMode, bool trainingMode)
 {
     if (m_headItem) {
         scene()->removeItem(m_headItem);
         delete m_headItem;
         m_headItem = nullptr;
     }
-    if (m_headEyeItem) {
-        scene()->removeItem(m_headEyeItem);
-        delete m_headEyeItem;
-        m_headEyeItem = nullptr;
+    for (auto *item : std::as_const(m_headEyeItems)) {
+        scene()->removeItem(item);
+        delete item;
     }
+    m_headEyeItems.clear();
     
     for (auto *item : std::as_const(m_snakeItems)) {
         scene()->removeItem(item);
@@ -33,6 +33,8 @@ void SnakeGame::newGame(bool aiMode)
     
     m_logic.reset();
     m_logic.setAIMode(aiMode);
+    m_trainingMode = (aiMode && trainingMode);
+    m_timer.setInterval(m_trainingMode ? TrainTimerDelay : TimerDelay);
     
     m_headItem = scene()->addPolygon(
         headPolygon(m_logic.currentDir()),
@@ -41,12 +43,16 @@ void SnakeGame::newGame(bool aiMode)
     );
     m_headItem->setZValue(1);
     
-    m_headEyeItem = scene()->addEllipse(
-        eyeRect(m_logic.currentDir()),
-        QPen(Qt::NoPen),
-        QBrush(SnakeGameConfig::SnakeEyeColor)
-    );
-    m_headEyeItem->setZValue(2);
+    const QVector<QRectF> eyes = eyeRects(m_logic.currentDir());
+    for (const QRectF &eye : eyes) {
+        auto *eyeItem = scene()->addEllipse(
+            eye,
+            QPen(Qt::NoPen),
+            QBrush(SnakeGameConfig::SnakeEyeColor)
+        );
+        eyeItem->setZValue(2);
+        m_headEyeItems.append(eyeItem);
+    }
     
     m_appleItem = scene()->addRect(
         0, 0, CellSize, CellSize,
@@ -66,6 +72,12 @@ void SnakeGame::onTick()
     if (m_uiState != UiState::Playing)
         return;
 
+    if (m_logic.isAIMode() && m_trainingMode) {
+        for (int i = 0; i < TrainStepsPerTick; ++i)
+            m_logic.stepAI();
+        return;
+    }
+
     m_logic.isAIMode() ? m_logic.stepAI() : m_logic.step();
     syncGraphics();
 
@@ -77,6 +89,9 @@ void SnakeGame::onTick()
 
 void SnakeGame::handleGameOver()
 {
+    if (m_trainingMode)
+        return;
+
     const int currentScore = m_logic.score();
     if (currentScore > m_db.getHighScore()) {
         m_nameInput->show(currentScore);
