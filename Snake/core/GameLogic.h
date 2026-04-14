@@ -73,6 +73,6 @@ private:
     Direction  actionToDirection(int action, bool *ok) const;
     int  sendActRequest(const QJsonArray &state, bool *ok) const;
     bool sendTrainPacket(const QJsonArray &state, int action, double reward,
-                         const QJsonArray &nextState, bool done, int snakeSize) const;
+                         const QJsonArray &nextState, bool done, int snakeSize, bool starved) const;
 
 };

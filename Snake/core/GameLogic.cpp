@@ -283,7 +283,7 @@ int GameLogic::sendActRequest(const QJsonArray &state, bool *ok) const
 }
 
 bool GameLogic::sendTrainPacket(const QJsonArray &state, int action, double reward,
-                                 const QJsonArray &nextState, bool done, int snakeSize) const
+                                 const QJsonArray &nextState, bool done, int snakeSize, bool starved) const
 {
     QJsonObject payload;
     payload["mode"]       = "train";
@@ -293,6 +293,7 @@ bool GameLogic::sendTrainPacket(const QJsonArray &state, int action, double rewa
     payload["next_state"] = nextState;
     payload["done"]       = done;
     payload["size"]       = snakeSize;
+    payload["starved"]    = starved;
 
     bool ok = false;
     const QByteArray response = tcpExchange(payload, &ok);
@@ -613,7 +614,7 @@ bool GameLogic::stepAI()
     // --- Step 3: send training packet ---
     if (gotAction) {
         const QJsonArray nextState = buildObservationState(m_snake.first(), m_apple);
-        sendTrainPacket(state, actionInt, reward, nextState, done, m_snake.size());
+        sendTrainPacket(state, actionInt, reward, nextState, done, m_snake.size(), starved);
     }
 
     // --- Step 4: auto-reset episode on death or starvation (keeps the timer running) ---
