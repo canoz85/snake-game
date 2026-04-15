@@ -23,6 +23,7 @@ SnakeGame::SnakeGame(QWidget *parent)
     connect(&m_timer, &QTimer::timeout, this, &SnakeGame::onTick);
     m_timer.setInterval(TimerDelay);
     updateScoreDisplay();
+
     setMenuVisible(true);
 }
 

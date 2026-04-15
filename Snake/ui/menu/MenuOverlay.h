@@ -13,6 +13,7 @@ public:
         None,
         Start,
         StartAI,
+        TrainAI,
         Restart,
         BackToMenu,
         Scoreboard,
