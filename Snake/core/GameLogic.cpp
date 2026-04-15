@@ -9,8 +9,119 @@
 #include <QtGlobal>
 #include <limits>
 
+namespace {
+
+constexpr int kProtocolVersion = 1;
+constexpr int kObservationSize = 11;
+
+// Opens a short-lived TCP connection, sends payload, returns trimmed reply.
+QByteArray tcpExchange(const QJsonObject &payload, bool *ok)
+{
+    *ok = false;
+
+    QTcpSocket socket;
+    socket.connectToHost("127.0.0.1", 12345);
+    if (!socket.waitForConnected(500)) {
+        qWarning() << "TCP connect failed:" << socket.errorString();
+        return {};
+    }
+
+    const QByteArray data = QJsonDocument(payload).toJson(QJsonDocument::Compact) + '\n';
+    if (socket.write(data) < 0) {
+        qWarning() << "TCP write failed:" << socket.errorString();
+        return {};
+    }
+    socket.flush();
+    if (socket.bytesToWrite() > 0)
+        socket.waitForBytesWritten(500);
+
+    if (!socket.waitForReadyRead(500)) {
+        qWarning() << "TCP no reply:" << socket.errorString();
+        return {};
+    }
+
+    *ok = true;
+    return socket.readAll().trimmed();
+}
+
+class TcpAiClient final : public GameLogic::AiClient
+{
+public:
+    int requestAction(const QJsonArray &state, bool *ok) const override
+    {
+        *ok = false;
+
+        if (state.size() != kObservationSize) {
+            qWarning() << "act: invalid state size:" << state.size()
+                       << "expected" << kObservationSize;
+            return -1;
+        }
+
+        QJsonObject payload;
+        payload["protocol_version"] = kProtocolVersion;
+        payload["mode"]  = "act";
+        payload["state"] = state;
+
+        bool exchangeOk = false;
+        const QByteArray response = tcpExchange(payload, &exchangeOk);
+        if (!exchangeOk)
+            return -1;
+
+        bool parseOk = false;
+        const int action = response.toInt(&parseOk);
+        if (!parseOk) {
+            qWarning() << "act: unexpected response:" << response;
+            return -1;
+        }
+
+        *ok = true;
+        return action;
+    }
+
+    bool sendTrainingSample(const QJsonArray &state, int action, double reward,
+                            const QJsonArray &nextState, bool done,
+                            int snakeSize, bool starved) const override
+    {
+        if (state.size() != kObservationSize || nextState.size() != kObservationSize) {
+            qWarning() << "train: invalid state size, state=" << state.size()
+                       << "next_state=" << nextState.size()
+                       << "expected" << kObservationSize;
+            return false;
+        }
+
+        if (action < 0 || action > 2) {
+            qWarning() << "train: action out of range:" << action;
+            return false;
+        }
+
+        QJsonObject payload;
+        payload["protocol_version"] = kProtocolVersion;
+        payload["mode"]       = "train";
+        payload["state"]      = state;
+        payload["action"]     = action;
+        payload["reward"]     = reward;
+        payload["next_state"] = nextState;
+        payload["done"]       = done;
+        payload["size"]       = snakeSize;
+        payload["starved"]    = starved;
+
+        bool ok = false;
+        const QByteArray response = tcpExchange(payload, &ok);
+        if (!ok)
+            return false;
+
+        if (response != "ok")
+            qWarning() << "train: unexpected response:" << response;
+
+        return true;
+    }
+};
+
+} // namespace
+
 GameLogic::GameLogic()
 {
+    m_aiClient = std::make_shared<TcpAiClient>();
     reset();
 }
 
@@ -135,36 +246,6 @@ bool GameLogic::isSafeMove(QPointF head, QPointF dir) const
     return !m_snake.contains(head + dir);
 }
 
-// Opens a short-lived TCP connection, sends payload, returns trimmed reply.
-static QByteArray tcpExchange(const QJsonObject &payload, bool *ok)
-{
-    *ok = false;
-
-    QTcpSocket socket;
-    socket.connectToHost("127.0.0.1", 12345);
-    if (!socket.waitForConnected(500)) {
-        qWarning() << "TCP connect failed:" << socket.errorString();
-        return {};
-    }
-
-    const QByteArray data = QJsonDocument(payload).toJson(QJsonDocument::Compact) + '\n';
-    if (socket.write(data) < 0) {
-        qWarning() << "TCP write failed:" << socket.errorString();
-        return {};
-    }
-    socket.flush();
-    if (socket.bytesToWrite() > 0)
-        socket.waitForBytesWritten(500);
-
-    if (!socket.waitForReadyRead(500)) {
-        qWarning() << "TCP no reply:" << socket.errorString();
-        return {};
-    }
-
-    *ok = true;
-    return socket.readAll().trimmed();
-}
-
 QJsonArray GameLogic::buildObservationState(QPointF head, QPointF apple) const
 {
     const auto wrapCoord = [](int value, int maxValue) {
@@ -256,73 +337,41 @@ GameLogic::Direction GameLogic::fallbackDirection(QPointF head) const
     return vectorToDirection(m_currentDir);
 }
 
-int GameLogic::sendActRequest(const QJsonArray &state, bool *ok) const
-{
-    QJsonObject payload;
-    payload["mode"]  = "act";
-    payload["state"] = state;
-
-    bool exchangeOk = false;
-    const QByteArray response = tcpExchange(payload, &exchangeOk);
-    if (!exchangeOk) {
-        *ok = false;
-        return -1;
-    }
-
-    bool parseOk = false;
-    const int action = response.toInt(&parseOk);
-    if (!parseOk) {
-        qWarning() << "act: unexpected response:" << response;
-        *ok = false;
-        return -1;
-    }
-
-    //qDebug() << "act: received action" << action << "for state" << state;
-    *ok = true;
-    return action;
-}
-
-bool GameLogic::sendTrainPacket(const QJsonArray &state, int action, double reward,
-                                 const QJsonArray &nextState, bool done, int snakeSize, bool starved) const
-{
-    QJsonObject payload;
-    payload["mode"]       = "train";
-    payload["state"]      = state;
-    payload["action"]     = action;
-    payload["reward"]     = reward;
-    payload["next_state"] = nextState;
-    payload["done"]       = done;
-    payload["size"]       = snakeSize;
-    payload["starved"]    = starved;
-
-    bool ok = false;
-    const QByteArray response = tcpExchange(payload, &ok);
-    if (!ok)
-        return false;
-
-    if (response != "ok")
-        qWarning() << "train: unexpected response:" << response;
-
-    return true;
-}
-
 GameLogic::Direction GameLogic::actionToDirection(int action, bool *ok) const
 {
+    const auto vectorToDirection = [&](const QPointF &dir) {
+        if (dir == directionToVector(Direction::Left))
+            return Direction::Left;
+        if (dir == directionToVector(Direction::Right))
+            return Direction::Right;
+        if (dir == directionToVector(Direction::Down))
+            return Direction::Down;
+        return Direction::Up;
+    };
+
     *ok = true;
+
+    const QPointF dirVec = m_currentDir;
+    const QPointF dirRight(-dirVec.y(), dirVec.x());
+    const QPointF dirLeft(dirVec.y(), -dirVec.x());
 
     switch (action) {
     case 0:
-        return Direction::Up;
+        return vectorToDirection(dirVec);   // keep current direction
     case 1:
-        return Direction::Down;
+        return vectorToDirection(dirRight); // rotate right
     case 2:
-        return Direction::Left;
-    case 3:
-        return Direction::Right;
+        return vectorToDirection(dirLeft);  // rotate left
     default:
+        qWarning() << "act: unsupported action:" << action << "expected one of {0,1,2}";
         *ok = false;
-        return Direction::Up;
+        return vectorToDirection(dirVec);
     }
+}
+
+void GameLogic::setAiClient(std::shared_ptr<AiClient> client)
+{
+    m_aiClient = std::move(client);
 }
 
 /*
@@ -558,7 +607,12 @@ bool GameLogic::stepAI()
     const QJsonArray state = buildObservationState(m_snake.first(), m_apple);
 
     bool gotAction = false;
-    const int actionInt = sendActRequest(state, &gotAction);
+    int actionInt = -1;
+    if (!m_aiClient) {
+        qWarning() << "stepAI: AI client is not configured; using fallback movement";
+    } else {
+        actionInt = m_aiClient->requestAction(state, &gotAction);
+    }
 
     Direction dir = fallbackDirection(m_snake.first());
     if (gotAction) {
@@ -614,7 +668,7 @@ bool GameLogic::stepAI()
     // --- Step 3: send training packet ---
     if (gotAction) {
         const QJsonArray nextState = buildObservationState(m_snake.first(), m_apple);
-        sendTrainPacket(state, actionInt, reward, nextState, done, m_snake.size(), starved);
+        m_aiClient->sendTrainingSample(state, actionInt, reward, nextState, done, m_snake.size(), starved);
     }
 
     // --- Step 4: auto-reset episode on death or starvation (keeps the timer running) ---

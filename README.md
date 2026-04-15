@@ -37,19 +37,20 @@ Per AI tick, the game uses this observation state (11 values):
  food_left, food_right, food_up, food_down]
 ```
 
-Actions returned by Python:
+Actions returned by Python (relative to current heading):
 
-- `0 = Up`
-- `1 = Down`
-- `2 = Left`
-- `3 = Right`
+- `0 = straight`
+- `1 = turn right`
+- `2 = turn left`
+
+Any other action value is rejected by C++ and logged as invalid.
 
 Per-tick protocol:
 
 1. **Act request** (before move)
 
 ```json
-{"mode":"act","state":[...]}
+{"protocol_version":1,"mode":"act","state":[...]}
 ```
 
 Server responds with a plain digit string such as `"2"`.
@@ -57,19 +58,23 @@ Server responds with a plain digit string such as `"2"`.
 2. **Apply action in C++** and evaluate transition:
 
 - apple eaten: `reward = 10.0`
-- snake died: `reward = -10.0`, `done = true`
-- otherwise: `reward = -0.1`
+- snake died or starvation: `reward = -10.0`, `done = true`
+- moved closer to apple: `reward = +0.1`
+- moved farther/same distance: `reward = -0.2`
 
 3. **Train request** (after move)
 
 ```json
 {
+    "protocol_version": 1,
     "mode": "train",
     "state": [...],
     "action": 2,
     "reward": -0.1,
     "next_state": [...],
-    "done": false
+    "done": false,
+    "size": 7,
+    "starved": false
 }
 ```
 

@@ -3,6 +3,7 @@
 #include <QPointF>
 #include <QVector>
 #include <QRandomGenerator>
+#include <memory>
 
 class QJsonArray;
 
@@ -16,6 +17,15 @@ public:
     static constexpr int InitLength = 5;
 
     GameLogic();
+
+    class AiClient {
+    public:
+        virtual ~AiClient() = default;
+        virtual int requestAction(const QJsonArray &state, bool *ok) const = 0;
+        virtual bool sendTrainingSample(const QJsonArray &state, int action, double reward,
+                                        const QJsonArray &nextState, bool done,
+                                        int snakeSize, bool starved) const = 0;
+    };
 
     // Reset to a fresh game state.
     void reset();
@@ -33,6 +43,7 @@ public:
     bool stepAI();
     void setAIMode(bool enabled) { m_aiMode = enabled;}
     bool isAIMode() const { return m_aiMode; }  
+    void setAiClient(std::shared_ptr<AiClient> client);
 
     // --- State accessors ---
     const QVector<QPointF>& snakeBody()  const { return m_snake; } // head at [0]
@@ -71,8 +82,6 @@ private:
     QJsonArray buildObservationState(QPointF head, QPointF apple) const;
     Direction  fallbackDirection(QPointF head) const;
     Direction  actionToDirection(int action, bool *ok) const;
-    int  sendActRequest(const QJsonArray &state, bool *ok) const;
-    bool sendTrainPacket(const QJsonArray &state, int action, double reward,
-                         const QJsonArray &nextState, bool done, int snakeSize, bool starved) const;
+    std::shared_ptr<AiClient> m_aiClient;
 
 };
