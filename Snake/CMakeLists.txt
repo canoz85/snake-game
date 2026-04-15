@@ -8,7 +8,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # Find Qt6 widgets and SQL (for SQLite scoreboard)
-find_package(Qt6 REQUIRED COMPONENTS Widgets Sql)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Core Network)
 
 # Build the executable
 qt_add_executable(Snake
@@ -34,13 +34,19 @@ qt_add_executable(Snake
 )
 
 # Link Qt widgets
-target_link_libraries(Snake PRIVATE Qt6::Widgets Qt6::Sql)
+target_link_libraries(Snake PRIVATE Qt6::Widgets Qt6::Core Qt6::Sql Qt6::Network)
 
 # Allow includes like "ui/menu/MenuOverlay.h" and "data/ScoreDB.h".
 target_include_directories(Snake PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Optional – set some binary properties
 set_target_properties(Snake PROPERTIES
-    WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE   TRUE
 )
+
+# Show a console window in Debug on Windows so qDebug() output is visible.
+if (WIN32)
+    set_target_properties(Snake PROPERTIES
+        WIN32_EXECUTABLE $<IF:$<CONFIG:Debug>,FALSE,TRUE>
+    )
+endif()

@@ -69,8 +69,11 @@ void SnakeGame::handleMenuInput(QKeyEvent *event)
     case Qt::Key_Enter:
     case Qt::Key_Return: {
         const MenuOverlay::Action action = m_menu->activateSelection();
-        if (action == MenuOverlay::Action::Start || action == MenuOverlay::Action::Restart) {
-            newGame();
+        if (action == MenuOverlay::Action::Start || action == MenuOverlay::Action::Restart
+            || action == MenuOverlay::Action::StartAI || action == MenuOverlay::Action::TrainAI) {
+            const bool aiMode = (action == MenuOverlay::Action::StartAI || action == MenuOverlay::Action::TrainAI);
+            const bool trainingMode = (action == MenuOverlay::Action::TrainAI);
+            newGame(aiMode, trainingMode);
             setMenuVisible(false);
         } else if (action == MenuOverlay::Action::BackToMenu) {
             m_menu->showStartMenu();
@@ -91,6 +94,11 @@ void SnakeGame::handleMenuInput(QKeyEvent *event)
 
 void SnakeGame::handleGameplayInput(QKeyEvent *event)
 {
+    if (m_trainingMode) {
+        QGraphicsView::keyPressEvent(event);
+        return;
+    }
+
     if (m_logic.isGameOver()) {
         QGraphicsView::keyPressEvent(event);
         return;

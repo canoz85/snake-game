@@ -12,6 +12,8 @@ public:
     enum class Action {
         None,
         Start,
+        StartAI,
+        TrainAI,
         Restart,
         BackToMenu,
         Scoreboard,

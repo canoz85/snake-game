@@ -25,7 +25,7 @@ class SnakeGame : public QGraphicsView
 public:
     explicit SnakeGame(QWidget *parent = nullptr);
 
-    void newGame();
+    void newGame(bool aiMode = false, bool trainingMode = false);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -43,8 +43,10 @@ private:
     };
 
     // Rendering constants (pixel-level, view concerns only)
-    static constexpr int CellSize   = 20;  // px per grid cell
-    static constexpr int TimerDelay = 150; // ms
+    static constexpr int CellSize = 20;          // px per grid cell
+    static constexpr int TimerDelay = 150;       // ms
+    static constexpr int TrainTimerDelay = 1;    // ms
+    static constexpr int TrainStepsPerTick = 40; // logic steps/timer in training
     static constexpr int ScoreBarHeight = 28;
 
     void setupScene();
@@ -62,22 +64,23 @@ private:
     void togglePause();
 
     // Head shape helpers — return geometry in local cell coords (origin = top-left)
-    QPolygonF headPolygon(QPointF dir) const;
-    QRectF    eyeRect(QPointF dir)     const;
+    QPolygonF       headPolygon(QPointF dir) const;
+    QVector<QRectF> eyeRects(QPointF dir)    const;
 
     GameLogic  m_logic;
     QTimer     m_timer;
     UiState    m_uiState            = UiState::Menu;
     bool       m_scoreboardFromStart = false;
+    bool       m_trainingMode = false;
     ScoreDB    m_db;
     std::unique_ptr<MenuOverlay>        m_menu;
     std::unique_ptr<NameInputOverlay>   m_nameInput;
     std::unique_ptr<ScoreboardOverlay>  m_scoreboard;
 
-    QGraphicsPolygonItem*       m_headItem    = nullptr; // triangle arrow
-    QGraphicsEllipseItem*       m_headEyeItem = nullptr; // eye dot
-    QVector<QGraphicsRectItem*> m_snakeItems;             // body segments only (index 1+)
-    QGraphicsRectItem*          m_appleItem   = nullptr;
+    QGraphicsPolygonItem*         m_headItem     = nullptr; // triangle arrow
+    QVector<QGraphicsEllipseItem*> m_headEyeItems;          // eye dots
+    QVector<QGraphicsRectItem*>   m_snakeItems;             // body segments only (index 1+)
+    QGraphicsRectItem*            m_appleItem    = nullptr;
     QGraphicsRectItem*          m_scoreBarItem = nullptr;
     QGraphicsTextItem*          m_scoreTextItem = nullptr;
     QGraphicsTextItem*          m_bestScoreTextItem = nullptr;

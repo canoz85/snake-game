@@ -39,7 +39,7 @@ MenuOverlay::MenuOverlay(QGraphicsScene *scene, qreal width, qreal height)
     m_hint->setTextWidth(rectWidth);
     applyTextAlignment(m_hint, Qt::AlignCenter);
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         QGraphicsTextItem *item = m_scene->addText(QString(), menuFont);
         item->setZValue(10);
         m_itemTexts.append(item);
@@ -59,7 +59,7 @@ void MenuOverlay::showStartMenu()
     setMenu(
         "SNAKE GAME // ʙᴀᴛᴜ & ᴄᴀɴ",
         "arrows to navigate • enter to select",
-        {"Start", "Scoreboard", "Exit"}
+        {"Start", "Start AI", "Train AI", "Scoreboard", "Exit"}
     );
     setVisible(true);
 }
@@ -69,7 +69,7 @@ void MenuOverlay::showGameOverMenu(int score)
     setMenu(
         QString("GAME OVER // SCORE: %1").arg(score),
         "arrows to navigate • enter to select",
-        {"Restart", "Back to Menu", "Exit"}
+        {"Restart", "Start AI", "Train AI", "Back to Menu", "Exit"}
     );
     setVisible(true);
 }
@@ -113,6 +113,10 @@ MenuOverlay::Action MenuOverlay::activateSelection() const
     const QString current = m_items.at(m_selection);
     if (current == "Start")
         return Action::Start;
+    if (current == "Start AI")
+        return Action::StartAI;
+    if (current == "Train AI")
+        return Action::TrainAI;
     if (current == "Restart")
         return Action::Restart;
     if (current == "Back to Menu")

@@ -3,6 +3,9 @@
 #include <QPointF>
 #include <QVector>
 #include <QRandomGenerator>
+#include <memory>
+
+class QJsonArray;
 
 // Pure game-logic class — no Qt graphics dependency.
 // All positions are in grid coordinates (col, row).
@@ -14,6 +17,15 @@ public:
     static constexpr int InitLength = 5;
 
     GameLogic();
+
+    class AiClient {
+    public:
+        virtual ~AiClient() = default;
+        virtual int requestAction(const QJsonArray &state, bool *ok) const = 0;
+        virtual bool sendTrainingSample(const QJsonArray &state, int action, double reward,
+                                        const QJsonArray &nextState, bool done,
+                                        int snakeSize, bool starved) const = 0;
+    };
 
     // Reset to a fresh game state.
     void reset();
@@ -27,6 +39,12 @@ public:
     // subsequent calls to step() are no-ops.
     bool step();
 
+    //simple ai mode
+    bool stepAI();
+    void setAIMode(bool enabled) { m_aiMode = enabled;}
+    bool isAIMode() const { return m_aiMode; }  
+    void setAiClient(std::shared_ptr<AiClient> client);
+
     // --- State accessors ---
     const QVector<QPointF>& snakeBody()  const { return m_snake; } // head at [0]
     QPointF                 applePos()   const { return m_apple; }
@@ -34,14 +52,36 @@ public:
     bool                    isGameOver() const { return m_gameOver; }
     int                     score()      const { return m_score; }
 
+    QPointF                 m_lastDirection;
+
 private:
+    enum class Direction {
+        Up,
+        Down,
+        Left,
+        Right
+    };
+
     QVector<QPointF> m_snake;       // head at index 0, grid coords
     QPointF          m_apple;
     QPointF          m_currentDir;
     QPointF          m_queuedDir;
     bool             m_hasQueuedDir = false;
     bool             m_gameOver = false;
+    bool             m_aiMode = false;
     int              m_score    = 0;
+    int              m_stepsSinceLastFood = 0;
 
     void placeApple();
+
+    QPointF directionToVector(Direction dir) const;
+    bool isSafeMove(QPointF head, QPointF dir) const;
+    void processMove(Direction dir);
+
+    // RL helpers
+    QJsonArray buildObservationState(QPointF head, QPointF apple) const;
+    Direction  fallbackDirection(QPointF head) const;
+    Direction  actionToDirection(int action, bool *ok) const;
+    std::shared_ptr<AiClient> m_aiClient;
+
 };
