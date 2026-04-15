@@ -38,3 +38,8 @@ ui_*.h
 
 # VS Code workspace-local settings
 .vscode/
+
+*.7z
+notes for ai plan.txt
+
+
