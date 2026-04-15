@@ -25,7 +25,9 @@ class SnakeGame : public QGraphicsView
 public:
     explicit SnakeGame(QWidget *parent = nullptr);
 
-    void newGame(bool aiMode = false, bool trainingMode = false);
+    void newGame(bool aiMode = false,
+                 bool trainingMode = false,
+                 GameLogic::AiPolicy aiPolicy = GameLogic::AiPolicy::Neural);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -62,6 +64,7 @@ private:
     void handleScoreboardInput(QKeyEvent *event);
     void handleGameplayInput(QKeyEvent *event);
     void togglePause();
+    void showInGameEscMenu();
 
     // Head shape helpers — return geometry in local cell coords (origin = top-left)
     QPolygonF       headPolygon(QPointF dir) const;

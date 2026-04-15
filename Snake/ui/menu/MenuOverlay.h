@@ -11,10 +11,11 @@ class MenuOverlay
 public:
     enum class Action {
         None,
-        Start,
-        StartAI,
-        TrainAI,
-        Restart,
+        StartNormal,
+        OpenAIMenu,
+        StartNeuralUI,
+        StartNeuralTrain,
+        StartRuleBased,
         BackToMenu,
         Scoreboard,
         Exit
@@ -23,6 +24,7 @@ public:
     MenuOverlay(QGraphicsScene *scene, qreal width, qreal height);
 
     void showStartMenu();
+    void showAIModeMenu();
     void showGameOverMenu(int score);
 
     void setVisible(bool visible);
@@ -31,8 +33,10 @@ public:
     void moveSelectionUp();
     void moveSelectionDown();
     Action activateSelection() const;
+    Action activateNumber(int number) const;
 
 private:
+    Action actionForItem(const QString &item) const;
     void setMenu(const QString &title, const QString &hint, const QStringList &items);
     void updateVisuals();
     void applyTextAlignment(QGraphicsTextItem *item, Qt::Alignment alignment);

@@ -6,7 +6,7 @@
 #include <QPen>
 #include <QColor>
 
-void SnakeGame::newGame(bool aiMode, bool trainingMode)
+void SnakeGame::newGame(bool aiMode, bool trainingMode, GameLogic::AiPolicy aiPolicy)
 {
     if (m_headItem) {
         scene()->removeItem(m_headItem);
@@ -33,6 +33,7 @@ void SnakeGame::newGame(bool aiMode, bool trainingMode)
     
     m_logic.reset();
     m_logic.setAIMode(aiMode);
+    m_logic.setAiPolicy(aiPolicy);
     m_trainingMode = (aiMode && trainingMode);
     m_timer.setInterval(m_trainingMode ? TrainTimerDelay : TimerDelay);
     
@@ -64,7 +65,7 @@ void SnakeGame::newGame(bool aiMode, bool trainingMode)
     syncGraphics();
     
     if (!m_timer.isActive())
-    m_timer.start();
+        m_timer.start();
 }
 
 void SnakeGame::onTick()

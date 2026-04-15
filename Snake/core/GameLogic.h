@@ -16,6 +16,11 @@ public:
     static constexpr int Columns    = 30;
     static constexpr int InitLength = 5;
 
+    enum class AiPolicy {
+        Neural,
+        RuleBased
+    };
+
     GameLogic();
 
     class AiClient {
@@ -41,9 +46,14 @@ public:
 
     //simple ai mode
     bool stepAI();
+    bool stepAI_NN();
+    bool stepAI_RB();
+
     void setAIMode(bool enabled) { m_aiMode = enabled;}
     bool isAIMode() const { return m_aiMode; }  
     void setAiClient(std::shared_ptr<AiClient> client);
+    void setAiPolicy(AiPolicy policy) { m_aiPolicy = policy; }
+    AiPolicy aiPolicy() const { return m_aiPolicy; }
 
     // --- State accessors ---
     const QVector<QPointF>& snakeBody()  const { return m_snake; } // head at [0]
@@ -69,6 +79,7 @@ private:
     bool             m_hasQueuedDir = false;
     bool             m_gameOver = false;
     bool             m_aiMode = false;
+    AiPolicy         m_aiPolicy = AiPolicy::Neural;
     int              m_score    = 0;
     int              m_stepsSinceLastFood = 0;
 
@@ -79,6 +90,7 @@ private:
     void processMove(Direction dir);
 
     // RL helpers
+    Direction  decideDirection_(QPointF head, QPointF apple);
     QJsonArray buildObservationState(QPointF head, QPointF apple) const;
     Direction  fallbackDirection(QPointF head) const;
     Direction  actionToDirection(int action, bool *ok) const;

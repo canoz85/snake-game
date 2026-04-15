@@ -374,7 +374,6 @@ void GameLogic::setAiClient(std::shared_ptr<AiClient> client)
     m_aiClient = std::move(client);
 }
 
-/*
 GameLogic::Direction GameLogic::decideDirection_(QPointF head, QPointF apple)
 {
     struct ANode {
@@ -592,7 +591,6 @@ GameLogic::Direction GameLogic::decideDirection_(QPointF head, QPointF apple)
 
     return Direction::Up;
 }
-    */
 
 void GameLogic::processMove(Direction dir)
 {
@@ -602,6 +600,21 @@ void GameLogic::processMove(Direction dir)
 }
 
 bool GameLogic::stepAI()
+{
+    if (m_aiPolicy == AiPolicy::Neural)
+        return stepAI_NN();
+    else
+        return stepAI_RB();
+}
+
+bool GameLogic::stepAI_RB()
+{
+    const Direction dir = decideDirection_(m_snake.first(), m_apple);
+    processMove(dir);
+    return step();
+}
+
+bool GameLogic::stepAI_NN()
 {
     // --- Step 1: ask the server for an action ---
     const QJsonArray state = buildObservationState(m_snake.first(), m_apple);

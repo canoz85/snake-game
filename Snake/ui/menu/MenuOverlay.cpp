@@ -58,8 +58,18 @@ void MenuOverlay::showStartMenu()
 {
     setMenu(
         "SNAKE GAME // ʙᴀᴛᴜ & ᴄᴀɴ",
-        "arrows to navigate • enter to select",
-        {"Start", "Start AI", "Train AI", "Scoreboard", "Exit"}
+        "arrows to navigate • enter to select • press 1-4",
+        {"Start", "Start AI", "Scoreboard", "Exit"}
+    );
+    setVisible(true);
+}
+
+void MenuOverlay::showAIModeMenu()
+{
+    setMenu(
+        "AI MODE",
+        "arrows to navigate • enter to select • press 1-4",
+        {"Neural UI", "Neural Train", "Rule Based", "Back"}
     );
     setVisible(true);
 }
@@ -68,8 +78,8 @@ void MenuOverlay::showGameOverMenu(int score)
 {
     setMenu(
         QString("GAME OVER // SCORE: %1").arg(score),
-        "arrows to navigate • enter to select",
-        {"Restart", "Start AI", "Train AI", "Back to Menu", "Exit"}
+        "arrows to navigate • enter to select • press 1-4",
+        {"Start", "Start AI", "Scoreboard", "Exit"}
     );
     setVisible(true);
 }
@@ -110,20 +120,34 @@ MenuOverlay::Action MenuOverlay::activateSelection() const
     if (m_items.isEmpty())
         return Action::None;
 
-    const QString current = m_items.at(m_selection);
-    if (current == "Start")
-        return Action::Start;
-    if (current == "Start AI")
-        return Action::StartAI;
-    if (current == "Train AI")
-        return Action::TrainAI;
-    if (current == "Restart")
-        return Action::Restart;
-    if (current == "Back to Menu")
+    return actionForItem(m_items.at(m_selection));
+}
+
+MenuOverlay::Action MenuOverlay::activateNumber(int number) const
+{
+    if (number < 1 || number > m_items.size())
+        return Action::None;
+
+    return actionForItem(m_items.at(number - 1));
+}
+
+MenuOverlay::Action MenuOverlay::actionForItem(const QString &item) const
+{
+    if (item == "Start")
+        return Action::StartNormal;
+    if (item == "Start AI")
+        return Action::OpenAIMenu;
+    if (item == "Neural UI")
+        return Action::StartNeuralUI;
+    if (item == "Neural Train")
+        return Action::StartNeuralTrain;
+    if (item == "Rule Based")
+        return Action::StartRuleBased;
+    if (item == "Back")
         return Action::BackToMenu;
-    if (current == "Scoreboard")
+    if (item == "Scoreboard")
         return Action::Scoreboard;
-    if (current == "Exit")
+    if (item == "Exit")
         return Action::Exit;
 
     return Action::None;
@@ -174,7 +198,7 @@ void MenuOverlay::updateVisuals()
         if (i < m_itemMarkers.size())
             m_itemMarkers[i]->setVisible(m_visible);
         const bool selected = (i == m_selection);
-        const QString labelText = "[ " + m_items.at(i) + " ]";
+        const QString labelText = QString("%1. %2").arg(i + 1).arg(m_items.at(i));
         m_itemTexts[i]->setDefaultTextColor(selected ? QColor(190, 255, 190) : QColor(90, 140, 90));
         m_itemTexts[i]->setHtml(
             selected

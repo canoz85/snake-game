@@ -9,9 +9,11 @@ A classic Snake game built with **Qt6 + C++** and **CMake**.
 - The board wraps at all four edges — no wall deaths
 - The only way to die is **running into your own body**
 - Only one turn is applied per game tick, so rapid double-key sequences won't cause false collisions
-- Includes two AI menu modes:
-    - **Start AI**: visual AI play with normal tick speed and rendering
-    - **Train AI**: headless fast-training mode (no board UI rendering)
+- Includes normal and AI modes from the menu:
+    - **Start**: classic manual gameplay
+    - **Start AI -> Neural UI**: visual neural-AI play with normal tick speed and rendering
+    - **Start AI -> Neural Train**: headless fast-training mode (no board UI rendering)
+    - **Start AI -> Rule Based**: visual rule-based AI play (no Python server requests)
 - Beat the all-time high score → type your name in the in-scene name-input prompt to save your entry
 - View the **top-5 leaderboard** from the start menu (Scoreboard) or automatically after every game
 
@@ -21,11 +23,23 @@ A classic Snake game built with **Qt6 + C++** and **CMake**.
 |-----|--------|
 | ↑ ↓ ← → | Move / navigate menu |
 | Enter / → | Confirm menu selection |
+| 1-9 | Direct menu item selection by number |
 | P / Space | Pause / resume (non-training gameplay) |
+| Esc | Open in-game menu: Restart / Back to Main Menu / Exit |
 
-AI modes are started from the menu by selecting **Start AI** or **Train AI**.
+Menu structure:
 
-## AI Integration (Socket + RL Loop)
+- Main menu: **Start**, **Start AI**, **Scoreboard**, **Exit**
+- AI menu: **Neural UI**, **Neural Train**, **Rule Based**, **Back**
+
+## AI Integration
+
+The game supports two AI policies:
+
+- **Neural**: C++ talks to a Python server for action + training packets.
+- **RuleBased**: C++ uses an internal time-expanded A* planner and does not use the socket.
+
+### Neural Socket + RL Loop
 
 The C++ game communicates with a Python server on `127.0.0.1:12345` using short-lived TCP requests.
 
@@ -80,14 +94,14 @@ Server responds with a plain digit string such as `"2"`.
 
 Server responds with `"ok"`.
 
-### Train AI Mode
+### Neural Train Mode
 
-`Train AI` is optimized for speed:
+`Neural Train` is optimized for speed:
 
 - game runs multiple logic steps per timer tick
 - board visuals are hidden (head/body/apple/score bar)
 - debug socket logs remain enabled
-- episodes auto-reset after death to continue training
+- episodes auto-reset after death or starvation to continue training
 
 The AI uses a **time-expanded A\*** search where each node is `(x, y, t)`:
 
